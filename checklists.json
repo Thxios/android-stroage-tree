@@ -7,8 +7,8 @@
     { "id": "phase-1d", "name": "List View",                 "status": "completed", "completedAt": "2026-04-20" },
     { "id": "phase-1e", "name": "Treemap View",              "status": "completed", "completedAt": "2026-04-20" },
     { "id": "phase-1f", "name": "Navigation & Integration",  "status": "completed", "completedAt": "2026-04-20" },
-    { "id": "phase-2a", "name": "File Deletion",             "status": "pending", "completedAt": null },
-    { "id": "phase-2b", "name": "File Categorization",       "status": "pending", "completedAt": null },
-    { "id": "phase-2c", "name": "View Toggle",               "status": "pending", "completedAt": null }
+    { "id": "phase-2a", "name": "File Deletion",             "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-2b", "name": "File Categorization",       "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-2c", "name": "View Toggle",               "status": "completed", "completedAt": "2026-04-20" }
   ]
 }
