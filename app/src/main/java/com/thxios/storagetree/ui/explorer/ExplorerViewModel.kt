@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.thxios.storagetree.domain.model.FileNode
 import com.thxios.storagetree.domain.model.ScanState
+import com.thxios.storagetree.domain.model.ViewMode
 import com.thxios.storagetree.domain.usecase.ScanDirectoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -79,6 +80,14 @@ class ExplorerViewModel @Inject constructor(
         val parent = backStack.removeLast()
         _uiState.update {
             it.copy(displayedChildren = parent)
+        }
+    }
+
+    fun toggleViewMode() {
+        _uiState.update { current ->
+            current.copy(
+                viewMode = if (current.viewMode == ViewMode.LIST) ViewMode.TREEMAP else ViewMode.LIST
+            )
         }
     }
 }
