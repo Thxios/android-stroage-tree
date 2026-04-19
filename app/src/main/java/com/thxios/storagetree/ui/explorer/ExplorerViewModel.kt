@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.thxios.storagetree.domain.model.FileNode
 import com.thxios.storagetree.domain.model.ScanState
 import com.thxios.storagetree.domain.model.ViewMode
+import com.thxios.storagetree.domain.usecase.CategorizeFilesUseCase
+import com.thxios.storagetree.domain.usecase.DeleteNodeUseCase
 import com.thxios.storagetree.domain.usecase.ScanDirectoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,7 +18,9 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ExplorerViewModel @Inject constructor(
-    private val scanUseCase: ScanDirectoryUseCase
+    private val scanUseCase: ScanDirectoryUseCase,
+    private val deleteUseCase: DeleteNodeUseCase,
+    private val categorizeUseCase: CategorizeFilesUseCase
 ) : ViewModel() {
 
     private val backStack = ArrayDeque<List<FileNode>>()
@@ -40,12 +44,14 @@ class ExplorerViewModel @Inject constructor(
                     is ScanState.Done -> {
                         backStack.clear()
                         val sorted = state.rootNode.children.sortedByDescending { it.sizeBytes }
+                        val summary = categorizeUseCase(state.rootNode)
                         _uiState.update {
                             it.copy(
                                 isScanning = false,
                                 scanState = state,
                                 displayedChildren = sorted,
-                                currentPath = rootPath
+                                currentPath = rootPath,
+                                categorySummary = summary
                             )
                         }
                     }
@@ -88,6 +94,32 @@ class ExplorerViewModel @Inject constructor(
             current.copy(
                 viewMode = if (current.viewMode == ViewMode.LIST) ViewMode.TREEMAP else ViewMode.LIST
             )
+        }
+    }
+
+    fun setPendingDelete(node: FileNode?) {
+        _uiState.update { it.copy(pendingDeleteNode = node) }
+    }
+
+    fun deleteNode() {
+        val node = _uiState.value.pendingDeleteNode ?: return
+        viewModelScope.launch {
+            val result = deleteUseCase(node)
+            if (result.isSuccess) {
+                _uiState.update {
+                    it.copy(
+                        pendingDeleteNode = null,
+                        displayedChildren = it.displayedChildren.filter { child -> child.path != node.path }
+                    )
+                }
+            } else {
+                _uiState.update {
+                    it.copy(
+                        pendingDeleteNode = null,
+                        error = result.exceptionOrNull()?.message ?: "Delete failed"
+                    )
+                }
+            }
         }
     }
 }

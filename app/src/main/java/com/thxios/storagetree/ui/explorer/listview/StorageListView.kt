@@ -12,6 +12,7 @@ import com.thxios.storagetree.ui.theme.StorageTreeTheme
 fun StorageListView(
     nodes: List<FileNode>,
     onNodeClick: (FileNode) -> Unit,
+    onNodeLongClick: ((FileNode) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val totalSize = nodes.sumOf { it.sizeBytes }
@@ -20,7 +21,8 @@ fun StorageListView(
             FileNodeRow(
                 node = node,
                 totalSize = totalSize,
-                onClick = { onNodeClick(node) }
+                onClick = { onNodeClick(node) },
+                onLongClick = onNodeLongClick?.let { { it(node) } }
             )
         }
     }

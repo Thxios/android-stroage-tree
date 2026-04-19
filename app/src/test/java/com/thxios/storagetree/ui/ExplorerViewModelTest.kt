@@ -4,6 +4,8 @@ import app.cash.turbine.test
 import com.thxios.storagetree.domain.model.FileNode
 import com.thxios.storagetree.domain.model.ScanState
 import com.thxios.storagetree.domain.model.ViewMode
+import com.thxios.storagetree.domain.usecase.CategorizeFilesUseCase
+import com.thxios.storagetree.domain.usecase.DeleteNodeUseCase
 import com.thxios.storagetree.domain.usecase.ScanDirectoryUseCase
 import com.thxios.storagetree.ui.explorer.ExplorerViewModel
 import io.mockk.every
@@ -28,6 +30,8 @@ class ExplorerViewModelTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private val scanUseCase = mockk<ScanDirectoryUseCase>()
+    private val deleteUseCase = mockk<DeleteNodeUseCase>(relaxed = true)
+    private val categorizeUseCase = CategorizeFilesUseCase()
     private lateinit var viewModel: ExplorerViewModel
 
     private val childA = FileNode(name = "a.txt", path = "/root/a.txt", sizeBytes = 300L, isDirectory = false)
@@ -45,7 +49,7 @@ class ExplorerViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        viewModel = ExplorerViewModel(scanUseCase)
+        viewModel = ExplorerViewModel(scanUseCase, deleteUseCase, categorizeUseCase)
     }
 
     @After
