@@ -3,6 +3,7 @@ package com.thxios.storagetree.ui
 import app.cash.turbine.test
 import com.thxios.storagetree.domain.model.FileNode
 import com.thxios.storagetree.domain.model.ScanState
+import com.thxios.storagetree.domain.model.ViewMode
 import com.thxios.storagetree.domain.usecase.ScanDirectoryUseCase
 import com.thxios.storagetree.ui.explorer.ExplorerViewModel
 import io.mockk.every
@@ -144,5 +145,23 @@ class ExplorerViewModelTest {
 
         assertNotNull(viewModel.uiState.value.error)
         assertEquals("Permission denied", viewModel.uiState.value.error)
+    }
+
+    @Test
+    fun `initial viewMode is LIST`() {
+        assertEquals(ViewMode.LIST, viewModel.uiState.value.viewMode)
+    }
+
+    @Test
+    fun `toggleViewMode changes viewMode from LIST to TREEMAP`() {
+        viewModel.toggleViewMode()
+        assertEquals(ViewMode.TREEMAP, viewModel.uiState.value.viewMode)
+    }
+
+    @Test
+    fun `toggleViewMode twice returns viewMode to LIST`() {
+        viewModel.toggleViewMode()
+        viewModel.toggleViewMode()
+        assertEquals(ViewMode.LIST, viewModel.uiState.value.viewMode)
     }
 }
