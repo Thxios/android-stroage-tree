@@ -3,7 +3,7 @@
     { "id": "phase-0",  "name": "Project Scaffolding",       "status": "completed", "completedAt": "2026-04-19" },
     { "id": "phase-1a", "name": "Domain Models & Scanner",   "status": "pending", "completedAt": null },
     { "id": "phase-1b", "name": "Repository & Hilt Wiring",  "status": "pending", "completedAt": null },
-    { "id": "phase-1c", "name": "Permission Screen",         "status": "pending", "completedAt": null },
+    { "id": "phase-1c", "name": "Permission Screen",         "status": "completed", "completedAt": "2026-04-19" },
     { "id": "phase-1d", "name": "List View",                 "status": "pending", "completedAt": null },
     { "id": "phase-1e", "name": "Treemap View",              "status": "pending", "completedAt": null },
     { "id": "phase-1f", "name": "Navigation & Integration",  "status": "pending", "completedAt": null },
