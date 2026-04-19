@@ -21,6 +21,11 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "com.thxios.storagetree.HiltTestRunner"
+        testInstrumentationRunnerArguments["shellInputCommandInjection"] = "true"
+    }
+
+    testOptions {
+        animationsDisabled = true
     }
 
     buildTypes {
@@ -64,6 +69,7 @@ dependencies {
     testImplementation(libs.turbine)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     androidTestImplementation(libs.hilt.android.testing)

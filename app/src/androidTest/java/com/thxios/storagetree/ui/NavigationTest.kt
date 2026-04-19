@@ -4,17 +4,14 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.thxios.storagetree.MainActivity
-import com.thxios.storagetree.di.StorageModule
 import dagger.hilt.android.testing.HiltAndroidRule
 import dagger.hilt.android.testing.HiltAndroidTest
-import dagger.hilt.android.testing.UninstallModules
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
 @HiltAndroidTest
-@UninstallModules(StorageModule::class)
 @RunWith(AndroidJUnit4::class)
 class NavigationTest {
 
