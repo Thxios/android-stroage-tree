@@ -54,5 +54,29 @@
         "뒤로가기(시스템 Back) vs 상위 폴더 버튼 분리"
       ]
     }
+    ,
+    { "id": "phase-4a", "name": "Bug Fixes - Permission Flicker & Back Navigation", "status": "completed", "completedAt": "2026-04-20",
+      "tasks": [
+        "PermissionViewModel: @ApplicationContext 주입, init{}에서 즉시 권한 체크 (화면 깜빡임 제거)",
+        "ExplorerUiState: usageStatsPermissionChecked 필드 추가 (배너 초기 깜빡임 제거)",
+        "ExplorerViewModel: navigateUp() → goBack() (backStack pop), goToParent() 추가 (부모 디렉토리로 이동, backStack push)",
+        "ExplorerViewModel: navigateToAncestor() - backStack pop 대신 push로 변경 (뒤로가기 history 보존)",
+        "ExplorerUiState: canGoBack 필드 추가 (backStack.isNotEmpty())",
+        "ExplorerScreen: BackHandler(enabled=canGoBack) { goBack() } - navController.popBackStack() 제거 (/0 back 버그 수정)",
+        "ExplorerScreen: ^ 버튼 → goToParent(), 뒤로가기 버튼 → goBack() 분리"
+      ]
+    },
+    { "id": "phase-4b", "name": "Settings Page + Installed Apps Toggle + Sort Order", "status": "pending",
+      "tasks": [
+        "SortOrder enum 추가 (SIZE_DESC, NAME_ASC, DATE_DESC, NATURAL_NAME_ASC)",
+        "AppSettings data class + PreferencesRepository (DataStore)",
+        "SettingsViewModel: showInstalledApps (default=false), sortOrder (default=SIZE_DESC)",
+        "SettingsScreen: Composable, showInstalledApps 토글, sortOrder 선택 UI",
+        "AppNavGraph: Settings route 추가",
+        "ExplorerScreen: TopAppBar 설정 아이콘 → Settings 이동",
+        "ExplorerViewModel: showInstalledApps 설정에 따라 appsNode 포함/제외",
+        "ExplorerViewModel: sortOrder 설정에 따라 displayedChildren 정렬 (natural sort 포함)"
+      ]
+    }
   ]
 }
