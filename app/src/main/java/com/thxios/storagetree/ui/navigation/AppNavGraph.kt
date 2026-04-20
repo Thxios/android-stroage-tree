@@ -15,14 +15,18 @@ import com.thxios.storagetree.ui.explorer.ExplorerViewModel
 import com.thxios.storagetree.ui.permission.PermissionScreen
 import com.thxios.storagetree.ui.permission.PermissionViewModel
 import com.thxios.storagetree.ui.settings.SettingsScreen
+import com.thxios.storagetree.ui.splash.SplashScreen
 import androidx.compose.runtime.DisposableEffect
 
 @Composable
 fun AppNavGraph(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = AppDestination.Permission.route
+        startDestination = AppDestination.Splash.route
     ) {
+        composable(AppDestination.Splash.route) {
+            SplashScreen(navController = navController)
+        }
         composable(AppDestination.Permission.route) {
             val viewModel: PermissionViewModel = hiltViewModel()
             val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
