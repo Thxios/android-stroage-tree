@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -53,10 +55,11 @@ fun ExplorerScreen(
         viewModel.startScan(Environment.getExternalStorageDirectory().absolutePath)
     }
 
+    val isAtRoot = uiState.currentPath.isEmpty() ||
+        uiState.currentPath == Environment.getExternalStorageDirectory().absolutePath
+
     BackHandler {
-        if (uiState.currentPath.isNotEmpty() &&
-            uiState.currentPath != Environment.getExternalStorageDirectory().absolutePath
-        ) {
+        if (!isAtRoot) {
             viewModel.navigateUp()
         } else {
             navController?.popBackStack()
@@ -79,55 +82,69 @@ fun ExplorerScreen(
 
     ExplorerContent(
         uiState = uiState,
+        isAtRoot = isAtRoot,
         onNodeClick = { node ->
             if (node.isDirectory) viewModel.navigateTo(node)
         },
         onNodeLongClick = { node -> viewModel.setPendingDelete(node) },
-        onNavigateUp = {
-            if (uiState.currentPath.isNotEmpty() &&
-                uiState.currentPath != Environment.getExternalStorageDirectory().absolutePath
-            ) {
+        onAppBack = {
+            if (!isAtRoot) {
                 viewModel.navigateUp()
             } else {
                 navController?.popBackStack()
             }
         },
+        onNavigateUp = { viewModel.navigateUp() },
         onToggleViewMode = { viewModel.toggleViewMode() }
     )
+}
+
+internal fun formatDisplayPath(path: String, maxLen: Int = 40): String {
+    if (path.length <= maxLen) return path
+    val truncated = path.takeLast(maxLen - 3)
+    val slashIdx = truncated.indexOf('/')
+    return "..." + if (slashIdx >= 0) truncated.substring(slashIdx) else truncated
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ExplorerContent(
     uiState: ExplorerUiState,
+    isAtRoot: Boolean,
     onNodeClick: (FileNode) -> Unit,
     onNodeLongClick: (FileNode) -> Unit,
+    onAppBack: () -> Unit,
     onNavigateUp: () -> Unit,
     onToggleViewMode: () -> Unit
 ) {
-    val isAtRoot = uiState.currentPath.isEmpty() ||
-        uiState.currentPath == Environment.getExternalStorageDirectory().absolutePath
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
                         text = if (uiState.currentPath.isEmpty()) "Storage"
-                               else uiState.currentPath.substringAfterLast("/")
+                               else formatDisplayPath(uiState.currentPath),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 },
                 navigationIcon = {
-                    if (!isAtRoot) {
-                        IconButton(onClick = onNavigateUp) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back"
-                            )
-                        }
+                    IconButton(onClick = onAppBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
                     }
                 },
                 actions = {
+                    if (!isAtRoot) {
+                        IconButton(onClick = onNavigateUp) {
+                            Icon(
+                                imageVector = Icons.Filled.KeyboardArrowUp,
+                                contentDescription = "Go to parent folder"
+                            )
+                        }
+                    }
                     IconButton(onClick = onToggleViewMode) {
                         Icon(
                             imageVector = if (uiState.viewMode == ViewMode.LIST)
@@ -208,8 +225,31 @@ private fun ExplorerScreenPreview() {
                     FileCategory.VIDEO to 100_000_000L
                 )
             ),
+            isAtRoot = true,
             onNodeClick = {},
             onNodeLongClick = {},
+            onAppBack = {},
+            onNavigateUp = {},
+            onToggleViewMode = {}
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ExplorerScreenSubDirPreview() {
+    StorageTreeTheme {
+        ExplorerContent(
+            uiState = ExplorerUiState(
+                currentPath = "/storage/emulated/0/Downloads/very/long/path/to/show/truncation",
+                displayedChildren = listOf(
+                    FileNode(name = "file.zip", path = "/storage/emulated/0/Downloads/very/long/path/to/show/truncation/file.zip", sizeBytes = 100_000_000L, isDirectory = false)
+                )
+            ),
+            isAtRoot = false,
+            onNodeClick = {},
+            onNodeLongClick = {},
+            onAppBack = {},
             onNavigateUp = {},
             onToggleViewMode = {}
         )
