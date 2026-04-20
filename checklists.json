@@ -9,6 +9,14 @@
     { "id": "phase-1f", "name": "Navigation & Integration",  "status": "completed", "completedAt": "2026-04-20" },
     { "id": "phase-2a", "name": "File Deletion",             "status": "completed", "completedAt": "2026-04-20" },
     { "id": "phase-2b", "name": "File Categorization",       "status": "completed", "completedAt": "2026-04-20" },
-    { "id": "phase-2c", "name": "View Toggle",               "status": "completed", "completedAt": "2026-04-20" }
+    { "id": "phase-2c", "name": "View Toggle",               "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-3a", "name": "UX Improvements",           "status": "completed", "completedAt": "2026-04-20",
+      "tasks": [
+        "실시간 스캔 결과 표시 (Scanning 중 displayedChildren 업데이트)",
+        "navigateUp() 시 currentPath 복원 버그 수정",
+        "TopAppBar에 전체 path 표시 (앞부분 ... 생략)",
+        "뒤로가기(시스템 Back) vs 상위 폴더 버튼 분리"
+      ]
+    }
   ]
 }
