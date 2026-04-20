@@ -10,6 +10,15 @@
     { "id": "phase-2a", "name": "File Deletion",             "status": "completed", "completedAt": "2026-04-20" },
     { "id": "phase-2b", "name": "File Categorization",       "status": "completed", "completedAt": "2026-04-20" },
     { "id": "phase-2c", "name": "View Toggle",               "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-3b", "name": "Scan Root Selection & Partial Scan Display", "status": "completed", "completedAt": "2026-04-20",
+      "tasks": [
+        "FileScanner: 상위 폴더 스캔 완료 시마다 partial rootNode emit",
+        "ExplorerViewModel: Scanning 시 currentPath도 rootPath로 업데이트",
+        "StorageVolumeHelper: 사용 가능한 저장소 루트 목록 제공 (내부/외부)",
+        "ExplorerScreen: 저장소 루트 선택 UI (드롭다운 or 다이얼로그)",
+        "ExplorerViewModel: 선택한 rootPath로 스캔 시작"
+      ]
+    },
     { "id": "phase-3a", "name": "UX Improvements",           "status": "completed", "completedAt": "2026-04-20",
       "tasks": [
         "실시간 스캔 결과 표시 (Scanning 중 displayedChildren 업데이트)",
