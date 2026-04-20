@@ -1,9 +1,12 @@
 package com.thxios.storagetree.ui.explorer
 
+import android.content.Intent
 import android.os.Environment
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -26,10 +29,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,9 +42,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.thxios.storagetree.data.scanner.FileSizeFormatter
@@ -61,11 +70,24 @@ fun ExplorerScreen(
     navController: NavController? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
     LaunchedEffect(Unit) {
         viewModel.loadStorageRoots()
         val defaultPath = Environment.getExternalStorageDirectory().absolutePath
         viewModel.startScan(defaultPath)
+    }
+
+    // Re-check usage stats permission when returning from Settings
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadInstalledApps()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
     val rootPath = uiState.selectedRoot?.path ?: Environment.getExternalStorageDirectory().absolutePath
@@ -111,7 +133,11 @@ fun ExplorerScreen(
         onToggleViewMode = { viewModel.toggleViewMode() },
         onRootSelected = { viewModel.selectRoot(it) },
         onBreadcrumbClick = { viewModel.navigateToAncestor(it) },
-        onCategoryFilter = { viewModel.setFilter(it) }
+        onCategoryFilter = { viewModel.setFilter(it) },
+        onOpenUsageSettings = {
+            val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+            context.startActivity(intent)
+        }
     )
 }
 
@@ -135,7 +161,8 @@ private fun ExplorerContent(
     onToggleViewMode: () -> Unit,
     onRootSelected: (StorageRoot) -> Unit = {},
     onBreadcrumbClick: (String) -> Unit = {},
-    onCategoryFilter: (FileCategory?) -> Unit = {}
+    onCategoryFilter: (FileCategory?) -> Unit = {},
+    onOpenUsageSettings: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -187,6 +214,12 @@ private fun ExplorerContent(
             if (uiState.isScanning) {
                 ScanProgressBanner(currentPath = uiState.scanningCurrentPath)
             }
+            if (!uiState.hasUsageStatsPermission) {
+                UsageStatsPermissionBanner(
+                    onOpenSettings = onOpenUsageSettings,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
             if (uiState.availableRoots.size > 1) {
                 StorageRootPicker(
                     roots = uiState.availableRoots,
@@ -222,6 +255,39 @@ private fun ExplorerContent(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun UsageStatsPermissionBanner(
+    onOpenSettings: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = modifier
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "앱 데이터/캐시 크기를 보려면 사용 정보 접근 권한이 필요합니다",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = onOpenSettings) { Text("허용") }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun UsageStatsPermissionBannerPreview() {
+    StorageTreeTheme {
+        UsageStatsPermissionBanner(onOpenSettings = {})
     }
 }
 
