@@ -10,6 +10,15 @@
     { "id": "phase-2a", "name": "File Deletion",             "status": "completed", "completedAt": "2026-04-20" },
     { "id": "phase-2b", "name": "File Categorization",       "status": "completed", "completedAt": "2026-04-20" },
     { "id": "phase-2c", "name": "View Toggle",               "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-3e", "name": "Installed Apps Size Accuracy Fix", "status": "completed", "completedAt": "2026-04-20",
+      "tasks": [
+        "StorageStatsManager: UUID_DEFAULT(내부) + 외부 UUID 모두 쿼리",
+        "OBB 디렉토리 직접 측정: /storage/emulated/0/Android/obb/<pkg>/",
+        "외부 data 디렉토리 직접 측정 시도: /storage/emulated/0/Android/data/<pkg>/",
+        "splitSourceDirs 포함하여 APK 전체 크기 계산",
+        "앱 노드 하위에 OBB 항목 추가 표시"
+      ]
+    },
     { "id": "phase-3d", "name": "Installed Apps Virtual Folder", "status": "completed", "completedAt": "2026-04-20",
       "tasks": [
         "PACKAGE_USAGE_STATS 권한 추가 및 권한 요청 흐름",
