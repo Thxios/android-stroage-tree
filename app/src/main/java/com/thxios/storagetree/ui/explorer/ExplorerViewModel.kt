@@ -224,9 +224,11 @@ class ExplorerViewModel @Inject constructor(
     fun goBack() {
         if (backStack.isEmpty()) return
         val (path, children) = backStack.removeLast()
+        val isNowAtRoot = backStack.isEmpty()
+        val finalChildren = if (isNowAtRoot && scanRoot != null) buildRootChildren() else children
         _uiState.update {
             it.copy(
-                displayedChildren = children,
+                displayedChildren = finalChildren,
                 currentPath = path,
                 selectedCategory = null,
                 canGoBack = backStack.isNotEmpty()
@@ -308,10 +310,11 @@ class ExplorerViewModel @Inject constructor(
         // Find parent node in tree
         val parentNode = findNode(scanRoot, parentPath)
         if (parentNode != null) {
-            val sorted = sortChildren(parentNode.children)
+            val rootPath2 = _uiState.value.selectedRoot?.path ?: ""
+            val children2 = if (parentPath == rootPath2) buildRootChildren() else sortChildren(parentNode.children)
             _uiState.update {
                 it.copy(
-                    displayedChildren = sorted,
+                    displayedChildren = children2,
                     currentPath = parentPath,
                     selectedCategory = null,
                     canGoBack = true
@@ -413,6 +416,13 @@ class ExplorerViewModel @Inject constructor(
         val filtered = if (category == null) base
         else base.filter { containsCategory(it, category) }
         _uiState.update { it.copy(selectedCategory = category, displayedChildren = filtered) }
+    }
+
+    private fun buildRootChildren(): List<FileNode> {
+        val rootChildren = sortChildren(scanRoot?.children ?: emptyList())
+        return if (currentSettings.showInstalledApps && appsNode != null) {
+            sortChildren(listOf(appsNode!!) + rootChildren.filter { it.path != appsNode!!.path })
+        } else rootChildren
     }
 
     private fun sortChildren(children: List<FileNode>): List<FileNode> {
