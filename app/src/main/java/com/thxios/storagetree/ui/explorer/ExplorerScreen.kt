@@ -12,15 +12,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sort
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -214,6 +218,10 @@ private fun ExplorerContent(
                             )
                         }
                     }
+                    SortOrderIconMenu(
+                        sortOrder = uiState.sortOrder,
+                        onSortOrderChanged = onSortOrderChanged
+                    )
                     IconButton(onClick = onReload, enabled = !uiState.isScanning) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
@@ -245,13 +253,6 @@ private fun ExplorerContent(
             if (uiState.isScanning) {
                 ScanProgressBanner(currentPath = uiState.scanningCurrentPath)
             }
-            SortOrderDropdown(
-                sortOrder = uiState.sortOrder,
-                onSortOrderChanged = onSortOrderChanged,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-            )
             if (uiState.usageStatsPermissionChecked && !uiState.hasUsageStatsPermission) {
                 UsageStatsPermissionBanner(
                     onOpenSettings = onOpenUsageSettings,
@@ -437,9 +438,8 @@ private fun StorageRootPickerPreview() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SortOrderDropdown(
+private fun SortOrderIconMenu(
     sortOrder: SortOrder,
     onSortOrderChanged: (SortOrder) -> Unit,
     modifier: Modifier = Modifier
@@ -451,23 +451,25 @@ private fun SortOrderDropdown(
         SortOrder.NATURAL_NAME_ASC to "이름 (자연 순서)"
     )
     var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = modifier
-    ) {
-        OutlinedTextField(
-            value = labels[sortOrder] ?: "",
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("정렬") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
-            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+    Box(modifier = modifier) {
+        IconButton(onClick = { expanded = true }) {
+            Icon(
+                imageVector = Icons.Filled.Sort,
+                contentDescription = "정렬 순서"
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             SortOrder.entries.forEach { order ->
                 DropdownMenuItem(
                     text = { Text(labels[order] ?: order.name) },
+                    leadingIcon = {
+                        if (order == sortOrder) {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null
+                            )
+                        }
+                    },
                     onClick = { onSortOrderChanged(order); expanded = false }
                 )
             }
@@ -477,9 +479,9 @@ private fun SortOrderDropdown(
 
 @Preview(showBackground = true)
 @Composable
-private fun SortOrderDropdownPreview() {
+private fun SortOrderIconMenuPreview() {
     StorageTreeTheme {
-        SortOrderDropdown(
+        SortOrderIconMenu(
             sortOrder = SortOrder.SIZE_DESC,
             onSortOrderChanged = {}
         )
