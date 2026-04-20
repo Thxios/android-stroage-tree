@@ -1,139 +1,31 @@
 {
   "phases": [
-    { "id": "phase-0",  "name": "Project Scaffolding",       "status": "completed", "completedAt": "2026-04-19" },
-    { "id": "phase-1a", "name": "Domain Models & Scanner",   "status": "completed", "completedAt": "2026-04-19" },
-    { "id": "phase-1b", "name": "Repository & Hilt Wiring",  "status": "completed", "completedAt": "2026-04-20" },
-    { "id": "phase-1c", "name": "Permission Screen",         "status": "completed", "completedAt": "2026-04-19" },
-    { "id": "phase-1d", "name": "List View",                 "status": "completed", "completedAt": "2026-04-20" },
-    { "id": "phase-1e", "name": "Treemap View",              "status": "completed", "completedAt": "2026-04-20" },
-    { "id": "phase-1f", "name": "Navigation & Integration",  "status": "completed", "completedAt": "2026-04-20" },
-    { "id": "phase-2a", "name": "File Deletion",             "status": "completed", "completedAt": "2026-04-20" },
-    { "id": "phase-2b", "name": "File Categorization",       "status": "completed", "completedAt": "2026-04-20" },
-    { "id": "phase-2c", "name": "View Toggle",               "status": "completed", "completedAt": "2026-04-20" },
-    { "id": "phase-3e", "name": "Installed Apps Size Accuracy Fix", "status": "completed", "completedAt": "2026-04-20",
-      "tasks": [
-        "StorageStatsManager: UUID_DEFAULT(내부) + 외부 UUID 모두 쿼리",
-        "OBB 디렉토리 직접 측정: /storage/emulated/0/Android/obb/<pkg>/",
-        "외부 data 디렉토리 직접 측정 시도: /storage/emulated/0/Android/data/<pkg>/",
-        "splitSourceDirs 포함하여 APK 전체 크기 계산",
-        "앱 노드 하위에 OBB 항목 추가 표시"
-      ]
-    },
-    { "id": "phase-3d", "name": "Installed Apps Virtual Folder", "status": "completed", "completedAt": "2026-04-20",
-      "tasks": [
-        "PACKAGE_USAGE_STATS 권한 추가 및 권한 요청 흐름",
-        "InstalledAppScanner: PackageManager + StorageStatsManager로 앱 목록 및 크기 수집",
-        "가상 FileNode 트리 생성: /Installed Apps/<앱이름> (APK + data + cache)",
-        "ExplorerViewModel: 파일 스캔 완료 후 설치 앱 노드를 root children에 병합",
-        "PermissionScreen 또는 별도 흐름으로 PACKAGE_USAGE_STATS 권한 요청"
-      ]
-    },
-    { "id": "phase-3c", "name": "Deep Scan UX & File Filter", "status": "completed", "completedAt": "2026-04-20",
-      "tasks": [
-        "경로 표시에서 /storage/emulated 접두사 제거",
-        "경로 breadcrumb 클릭으로 해당 경로로 이동",
-        "LazyColumn 스크롤바 표시",
-        "FileScanner: 깊은 경로도 throttle 기반 실시간 partial 업데이트",
-        "파일 타입 필터: 현재 폴더 기준 동적 categorySummary + 선택 시 필터링"
-      ]
-    },
-    { "id": "phase-3b", "name": "Scan Root Selection & Partial Scan Display", "status": "completed", "completedAt": "2026-04-20",
-      "tasks": [
-        "FileScanner: 상위 폴더 스캔 완료 시마다 partial rootNode emit",
-        "ExplorerViewModel: Scanning 시 currentPath도 rootPath로 업데이트",
-        "StorageVolumeHelper: 사용 가능한 저장소 루트 목록 제공 (내부/외부)",
-        "ExplorerScreen: 저장소 루트 선택 UI (드롭다운 or 다이얼로그)",
-        "ExplorerViewModel: 선택한 rootPath로 스캔 시작"
-      ]
-    },
-    { "id": "phase-3a", "name": "UX Improvements",           "status": "completed", "completedAt": "2026-04-20",
-      "tasks": [
-        "실시간 스캔 결과 표시 (Scanning 중 displayedChildren 업데이트)",
-        "navigateUp() 시 currentPath 복원 버그 수정",
-        "TopAppBar에 전체 path 표시 (앞부분 ... 생략)",
-        "뒤로가기(시스템 Back) vs 상위 폴더 버튼 분리"
-      ]
-    }
-    ,
-    { "id": "phase-4a", "name": "Bug Fixes - Permission Flicker & Back Navigation", "status": "completed", "completedAt": "2026-04-20",
-      "tasks": [
-        "PermissionViewModel: @ApplicationContext 주입, init{}에서 즉시 권한 체크 (화면 깜빡임 제거)",
-        "ExplorerUiState: usageStatsPermissionChecked 필드 추가 (배너 초기 깜빡임 제거)",
-        "ExplorerViewModel: navigateUp() → goBack() (backStack pop), goToParent() 추가 (부모 디렉토리로 이동, backStack push)",
-        "ExplorerViewModel: navigateToAncestor() - backStack pop 대신 push로 변경 (뒤로가기 history 보존)",
-        "ExplorerUiState: canGoBack 필드 추가 (backStack.isNotEmpty())",
-        "ExplorerScreen: BackHandler(enabled=canGoBack) { goBack() } - navController.popBackStack() 제거 (/0 back 버그 수정)",
-        "ExplorerScreen: ^ 버튼 → goToParent(), 뒤로가기 버튼 → goBack() 분리"
-      ]
-    },
-    { "id": "phase-4b", "name": "Settings Page + Installed Apps Toggle + Sort Order", "status": "completed", "completedAt": "2026-04-20",
-      "tasks": [
-        "SortOrder enum 추가 (SIZE_DESC, NAME_ASC, DATE_DESC, NATURAL_NAME_ASC)",
-        "AppSettings data class + PreferencesRepository (DataStore)",
-        "SettingsViewModel: showInstalledApps (default=false), sortOrder (default=SIZE_DESC)",
-        "SettingsScreen: Composable, showInstalledApps 토글, sortOrder 선택 UI",
-        "AppNavGraph: Settings route 추가",
-        "ExplorerScreen: TopAppBar 설정 아이콘 → Settings 이동",
-        "ExplorerViewModel: showInstalledApps 설정에 따라 appsNode 포함/제외",
-        "ExplorerViewModel: sortOrder 설정에 따라 displayedChildren 정렬 (natural sort 포함)"
-      ]
-    },
-    { "id": "phase-5a", "name": "Splash Screen", "status": "completed", "completedAt": "2026-04-21",
-      "tasks": [
-        "SplashViewModel: init{}에서 즉시 권한 체크 → NavTarget(Permission | Explorer) emit",
-        "SplashScreen: 앱 이름 + CircularProgressIndicator + @Preview",
-        "AppDestination: object Splash 추가",
-        "AppNavGraph: startDestination=Splash, Splash→Permission/Explorer 분기 (popUpTo Splash inclusive)"
-      ]
-    },
-    { "id": "phase-5b", "name": "Scan Once + Reload Button", "status": "completed", "completedAt": "2026-04-21",
-      "tasks": [
-        "ExplorerViewModel: scanStarted 플래그 추가",
-        "ExplorerViewModel: startScanIfNeeded() — 미시작 시에만 startScan()",
-        "ExplorerViewModel: reloadScan() — scanStarted=false 후 재스캔",
-        "ExplorerViewModel: reloadInstalledAppsIfPermissionChanged() — 권한 변경 시에만 loadInstalledApps()",
-        "ExplorerScreen: LaunchedEffect에서 startScan → startScanIfNeeded 변경",
-        "ExplorerScreen: DisposableEffect ON_RESUME에서 loadInstalledApps → reloadInstalledAppsIfPermissionChanged",
-        "ExplorerScreen: TopAppBar에 Icons.Filled.Refresh 버튼 추가 (스캔 중 비활성화)"
-      ]
-    },
-    { "id": "phase-5c", "name": "Start Folder Picker", "status": "completed", "completedAt": "2026-04-21",
-      "tasks": [
-        "ExplorerUiState: showFolderPicker, pickerCurrentPath, pickerEntries 필드 추가",
-        "ExplorerViewModel: openFolderPicker(), closeFolderPicker(), navigatePickerInto(), startScanFromPicker(), loadPickerEntries() 추가",
-        "FolderPickerSheet.kt: ModalBottomSheet + 경로 breadcrumb + 서브폴더 LazyColumn + '여기서 스캔 시작' 버튼 + @Preview",
-        "ExplorerScreen: FolderOpen 아이콘 버튼 추가 (스캔 중 아닐 때), FolderPickerSheet 조건부 표시"
-      ]
-    },
-    { "id": "phase-5d", "name": "Virtual Path Parent Navigation Fix", "status": "completed", "completedAt": "2026-04-21",
-      "tasks": [
-        "ExplorerViewModel.goToParent(): currentPath==VIRTUAL_APPS_PATH → scanRoot로 명시적 이동",
-        "ExplorerViewModel.goToParent(): VIRTUAL_APPS_PATH 하위 경로 → 올바른 상위로 이동",
-        "findVirtualNode(root, path) private 헬퍼 추가"
-      ]
-    },
-    { "id": "phase-5e", "name": "Sort Order In-Screen Dropdown", "status": "completed", "completedAt": "2026-04-21",
-      "tasks": [
-        "ExplorerUiState: sortOrder: SortOrder 필드 추가",
-        "ExplorerViewModel: setSortOrder(SortOrder) 추가, refreshDisplayedChildren()에서 sortOrder를 uiState에 반영",
-        "PreferencesRepository: updateSortOrder(SortOrder) 확인/추가",
-        "ExplorerScreen: SortOrderDropdown composable (ExposedDropdownMenuBox) 추가 + ExplorerContent에 통합 + @Preview",
-        "SettingsScreen: sortOrder RadioButton 그룹 제거"
-      ]
-    },
-    { "id": "phase-5f", "name": "Multi-Volume StorageStatsManager", "status": "completed", "completedAt": "2026-04-21",
-      "tasks": [
-        "InstalledAppScanner: getAllVolumeStats(storageStatsManager, storageManager, packageName) 추가",
-        "InstalledAppScanner: UUID_DEFAULT 단일 쿼리 블록 → getAllVolumeStats() 호출로 교체",
-        "InstalledAppScanner: OBB walkTopDown 블록 제거 (line 83-91)",
-        "InstalledAppScanner: 외부 데이터 walkTopDown 블록 제거 (line 94-103)",
-        "InstalledAppScanner: 자식 노드 APK/데이터/캐시로 단순화 (OBB 노드 제거)",
-        "InstalledAppScanner: VIRTUAL_OBB_SUFFIX 상수 제거"
-      ]
-    },
-    { "id": "phase-6a", "name": "Sort Order Icon Menu", "status": "completed", "completedAt": "2026-04-21" },
-    { "id": "phase-6b", "name": "Initial Folder Picker on Startup", "status": "completed", "completedAt": "2026-04-21" },
-    { "id": "phase-7a", "name": "Fix appsNode disappearing on goBack", "status": "completed", "completedAt": "2026-04-21" },
-    { "id": "phase-7b", "name": "Fix user-installed apps visibility (QUERY_ALL_PACKAGES)", "status": "completed", "completedAt": "2026-04-21" }
+    { "id": "phase-0",  "name": "Project Scaffolding",                          "status": "completed", "completedAt": "2026-04-19" },
+    { "id": "phase-1a", "name": "Domain Models & Scanner",                       "status": "completed", "completedAt": "2026-04-19" },
+    { "id": "phase-1b", "name": "Repository & Hilt Wiring",                      "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-1c", "name": "Permission Screen",                             "status": "completed", "completedAt": "2026-04-19" },
+    { "id": "phase-1d", "name": "List View",                                     "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-1e", "name": "Treemap View",                                  "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-1f", "name": "Navigation & Integration",                      "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-2a", "name": "File Deletion",                                 "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-2b", "name": "File Categorization",                           "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-2c", "name": "View Toggle",                                   "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-3a", "name": "UX Improvements",                               "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-3b", "name": "Scan Root Selection & Partial Scan Display",    "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-3c", "name": "Deep Scan UX & File Filter",                    "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-3d", "name": "Installed Apps Virtual Folder",                 "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-3e", "name": "Installed Apps Size Accuracy Fix",              "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-4a", "name": "Bug Fixes - Permission Flicker & Back Nav",     "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-4b", "name": "Settings Page + Installed Apps Toggle + Sort",  "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-5a", "name": "Splash Screen",                                 "status": "completed", "completedAt": "2026-04-21" },
+    { "id": "phase-5b", "name": "Scan Once + Reload Button",                     "status": "completed", "completedAt": "2026-04-21" },
+    { "id": "phase-5c", "name": "Start Folder Picker",                           "status": "completed", "completedAt": "2026-04-21" },
+    { "id": "phase-5d", "name": "Virtual Path Parent Navigation Fix",            "status": "completed", "completedAt": "2026-04-21" },
+    { "id": "phase-5e", "name": "Sort Order In-Screen Dropdown",                 "status": "completed", "completedAt": "2026-04-21" },
+    { "id": "phase-5f", "name": "Multi-Volume StorageStatsManager",              "status": "completed", "completedAt": "2026-04-21" },
+    { "id": "phase-6a", "name": "Sort Order Icon Menu",                          "status": "completed", "completedAt": "2026-04-21" },
+    { "id": "phase-6b", "name": "Initial Folder Picker on Startup",              "status": "completed", "completedAt": "2026-04-21" },
+    { "id": "phase-7a", "name": "Fix appsNode Disappearing on goBack",           "status": "completed", "completedAt": "2026-04-21" },
+    { "id": "phase-7b", "name": "Fix User-Installed Apps Visibility",            "status": "completed", "completedAt": "2026-04-21" }
   ]
 }

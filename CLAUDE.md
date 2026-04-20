@@ -39,23 +39,27 @@ TreeSizeFree의 핵심 기능을 Android로 이식하는 스토리지 분석 앱
 ## Package Structure
 ```
 com.thxios.storagetree/
-├── StorageTreeApplication.kt
-├── MainActivity.kt
-├── domain/model/          FileNode, ScanState, FileCategory, ViewMode
-├── domain/repository/     StorageRepository (interface)
-├── domain/usecase/        ScanDirectoryUseCase, DeleteNodeUseCase, CategorizeFilesUseCase
-├── data/repository/       StorageRepositoryImpl
-├── data/scanner/          FileScanner, FileSizeFormatter
-├── di/                    StorageModule
+├── domain/model/      FileNode, ScanState, FileCategory, ViewMode, SortOrder
+├── domain/repository/ StorageRepository
+├── domain/usecase/    ScanDirectory, DeleteNode, CategorizeFiles
+├── data/scanner/      FileScanner, FileSizeFormatter, InstalledAppScanner
+├── data/repository/   StorageRepositoryImpl
+├── data/storage/      StorageVolumeHelper
+├── data/preferences/  PreferencesRepository (DataStore, AppSettings)
+├── di/                StorageModule
 └── ui/
-    ├── theme/             (기존 유지, 수정 금지)
-    ├── navigation/        AppDestination, AppNavGraph
-    ├── permission/        PermissionScreen, PermissionViewModel
-    ├── explorer/          ExplorerScreen, ExplorerViewModel, ExplorerUiState
-    │   ├── listview/      StorageListView, FileNodeRow
-    │   └── treemap/       TreemapView, SquarifyAlgorithm
-    └── components/        ScanProgressBanner, SizeProgressBar, ErrorBanner
+    ├── theme/         (수정 금지)
+    ├── navigation/    AppDestination (Splash/Permission/Explorer/Settings), AppNavGraph
+    ├── splash/        SplashScreen, SplashViewModel
+    ├── permission/    PermissionScreen, PermissionViewModel
+    ├── settings/      SettingsScreen, SettingsViewModel
+    ├── explorer/      ExplorerScreen, ExplorerViewModel, ExplorerUiState, FolderPickerSheet
+    │   ├── listview/  StorageListView, FileNodeRow
+    │   └── treemap/   TreemapView, SquarifyAlgorithm
+    └── components/    ScanProgressBanner, SizeProgressBar, ErrorBanner, ScrollbarModifier
 ```
+
+완료된 Phase 이력: `completed_phases.md`
 
 ## Key Design Decisions
 - **파일 시스템**: `java.io.File` 사용 (NIO 아님) — `listFiles()` null 반환으로 권한 오류 처리
