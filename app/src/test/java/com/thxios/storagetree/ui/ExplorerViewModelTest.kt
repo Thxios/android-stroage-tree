@@ -2,6 +2,8 @@ package com.thxios.storagetree.ui
 
 import android.content.Context
 import app.cash.turbine.test
+import com.thxios.storagetree.data.preferences.AppSettings
+import com.thxios.storagetree.data.preferences.PreferencesRepository
 import com.thxios.storagetree.data.scanner.InstalledAppScanner
 import com.thxios.storagetree.data.storage.StorageRoot
 import com.thxios.storagetree.data.storage.StorageVolumeHelper
@@ -38,6 +40,7 @@ class ExplorerViewModelTest {
     private val categorizeUseCase = CategorizeFilesUseCase()
     private val storageVolumeHelper = mockk<StorageVolumeHelper>(relaxed = true)
     private val installedAppScanner = mockk<InstalledAppScanner>(relaxed = true)
+    private val preferencesRepository = mockk<PreferencesRepository>(relaxed = true)
     private val context = mockk<Context>(relaxed = true)
     private lateinit var viewModel: ExplorerViewModel
 
@@ -66,7 +69,8 @@ class ExplorerViewModelTest {
         every { storageVolumeHelper.getAvailableRoots(any()) } returns emptyList()
         every { installedAppScanner.hasUsageStatsPermission(any()) } returns false
         every { installedAppScanner.buildVirtualAppsNode(any()) } returns appsNode
-        viewModel = ExplorerViewModel(scanUseCase, deleteUseCase, categorizeUseCase, storageVolumeHelper, installedAppScanner, context)
+        every { preferencesRepository.appSettings } returns flowOf(AppSettings())
+        viewModel = ExplorerViewModel(scanUseCase, deleteUseCase, categorizeUseCase, storageVolumeHelper, installedAppScanner, preferencesRepository, context)
     }
 
     @After

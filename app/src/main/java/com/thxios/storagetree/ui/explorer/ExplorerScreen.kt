@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
@@ -57,6 +58,7 @@ import com.thxios.storagetree.domain.model.FileCategory
 import com.thxios.storagetree.domain.model.FileNode
 import com.thxios.storagetree.domain.model.ViewMode
 import com.thxios.storagetree.ui.components.ErrorBanner
+import com.thxios.storagetree.ui.navigation.AppDestination
 import com.thxios.storagetree.ui.components.ScanProgressBanner
 import com.thxios.storagetree.ui.explorer.listview.StorageListView
 import com.thxios.storagetree.ui.explorer.treemap.TreemapView
@@ -127,6 +129,9 @@ fun ExplorerScreen(
         onOpenUsageSettings = {
             val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
             context.startActivity(intent)
+        },
+        onOpenSettings = {
+            navController?.navigate(AppDestination.Settings.route)
         }
     )
 }
@@ -152,7 +157,8 @@ private fun ExplorerContent(
     onRootSelected: (StorageRoot) -> Unit = {},
     onBreadcrumbClick: (String) -> Unit = {},
     onCategoryFilter: (FileCategory?) -> Unit = {},
-    onOpenUsageSettings: () -> Unit = {}
+    onOpenUsageSettings: () -> Unit = {},
+    onOpenSettings: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -184,6 +190,12 @@ private fun ExplorerContent(
                                 contentDescription = "Go to parent folder"
                             )
                         }
+                    }
+                    IconButton(onClick = onOpenSettings) {
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = "설정"
+                        )
                     }
                     IconButton(onClick = onToggleViewMode) {
                         Icon(
