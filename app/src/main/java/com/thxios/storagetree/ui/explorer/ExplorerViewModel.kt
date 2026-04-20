@@ -44,6 +44,7 @@ class ExplorerViewModel @Inject constructor(
     private var currentSettings: AppSettings = AppSettings()
     private var scanStarted = false
     private var lastKnownHasUsageStatsPermission: Boolean? = null
+    private var isInitialPickerOpen: Boolean = false
 
     private val _uiState = MutableStateFlow(ExplorerUiState())
     val uiState: StateFlow<ExplorerUiState> = _uiState.asStateFlow()
@@ -83,6 +84,13 @@ class ExplorerViewModel @Inject constructor(
 
     fun startScanIfNeeded(rootPath: String) {
         if (!scanStarted) startScan(rootPath)
+    }
+
+    fun openFolderPickerIfNeeded() {
+        if (!scanStarted) {
+            isInitialPickerOpen = true
+            openFolderPicker()
+        }
     }
 
     fun reloadScan() {
@@ -468,7 +476,17 @@ class ExplorerViewModel @Inject constructor(
     }
 
     fun closeFolderPicker() {
-        _uiState.update { it.copy(showFolderPicker = false) }
+        if (isInitialPickerOpen) {
+            isInitialPickerOpen = false
+            _uiState.update { it.copy(showFolderPicker = false) }
+            if (!scanStarted) {
+                val defaultPath = _uiState.value.selectedRoot?.path
+                    ?: android.os.Environment.getExternalStorageDirectory().absolutePath
+                startScan(defaultPath)
+            }
+        } else {
+            _uiState.update { it.copy(showFolderPicker = false) }
+        }
     }
 
     fun navigatePickerInto(path: String) {
@@ -477,6 +495,7 @@ class ExplorerViewModel @Inject constructor(
     }
 
     fun startScanFromPicker(path: String) {
+        isInitialPickerOpen = false
         closeFolderPicker()
         scanStarted = false
         startScan(path)

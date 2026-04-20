@@ -84,8 +84,7 @@ fun ExplorerScreen(
 
     LaunchedEffect(Unit) {
         viewModel.loadStorageRoots()
-        val defaultPath = Environment.getExternalStorageDirectory().absolutePath
-        viewModel.startScanIfNeeded(defaultPath)
+        viewModel.openFolderPickerIfNeeded()
     }
 
     // Re-check usage stats permission when returning from Settings
