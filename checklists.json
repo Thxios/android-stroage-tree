@@ -112,7 +112,7 @@
         "findVirtualNode(root, path) private 헬퍼 추가"
       ]
     },
-    { "id": "phase-5e", "name": "Sort Order In-Screen Dropdown", "status": "pending",
+    { "id": "phase-5e", "name": "Sort Order In-Screen Dropdown", "status": "completed", "completedAt": "2026-04-21",
       "tasks": [
         "ExplorerUiState: sortOrder: SortOrder 필드 추가",
         "ExplorerViewModel: setSortOrder(SortOrder) 추가, refreshDisplayedChildren()에서 sortOrder를 uiState에 반영",
