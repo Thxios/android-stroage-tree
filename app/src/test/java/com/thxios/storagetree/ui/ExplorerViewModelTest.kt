@@ -127,6 +127,22 @@ class ExplorerViewModelTest {
     }
 
     @Test
+    fun `navigateUp_restoresCurrentPath`() = runTest {
+        every { scanUseCase("/root") } returns flowOf(ScanState.Done(rootNode))
+
+        viewModel.startScan("/root")
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertEquals("/root", viewModel.uiState.value.currentPath)
+
+        viewModel.navigateTo(subDir)
+        assertEquals("/root/dir", viewModel.uiState.value.currentPath)
+
+        viewModel.navigateUp()
+        assertEquals("/root", viewModel.uiState.value.currentPath)
+    }
+
+    @Test
     fun `navigateUp at root with empty backstack is a no-op`() = runTest {
         every { scanUseCase("/root") } returns flowOf(ScanState.Done(rootNode))
 
@@ -138,6 +154,39 @@ class ExplorerViewModelTest {
         viewModel.navigateUp()
 
         assertEquals(stateBefore, viewModel.uiState.value)
+    }
+
+    @Test
+    fun `scanning_withRootNode_updatesDisplayedChildren`() = runTest {
+        val partialRoot = FileNode(
+            name = "root",
+            path = "/root",
+            sizeBytes = 300L,
+            isDirectory = true,
+            children = listOf(childA, childB)
+        )
+        every { scanUseCase("/root") } returns flowOf(
+            ScanState.Scanning("/root/subdir", rootNode = partialRoot),
+            ScanState.Done(rootNode)
+        )
+
+        viewModel.uiState.test {
+            awaitItem() // initial state
+
+            viewModel.startScan("/root")
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val scanning = awaitItem()
+            assertTrue(scanning.isScanning)
+            // Should show partial children sorted descending
+            assertEquals(listOf(childA, childB), scanning.displayedChildren)
+            assertEquals("/root", scanning.currentPath)
+
+            val done = awaitItem()
+            assertEquals(false, done.isScanning)
+
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
