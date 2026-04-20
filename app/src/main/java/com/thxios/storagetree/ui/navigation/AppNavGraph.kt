@@ -14,6 +14,7 @@ import com.thxios.storagetree.ui.explorer.ExplorerScreen
 import com.thxios.storagetree.ui.explorer.ExplorerViewModel
 import com.thxios.storagetree.ui.permission.PermissionScreen
 import com.thxios.storagetree.ui.permission.PermissionViewModel
+import com.thxios.storagetree.ui.settings.SettingsScreen
 import androidx.compose.runtime.DisposableEffect
 
 @Composable
@@ -49,6 +50,11 @@ fun AppNavGraph(navController: NavHostController) {
         composable(AppDestination.Explorer.route) {
             val viewModel: ExplorerViewModel = hiltViewModel()
             ExplorerScreen(viewModel = viewModel, navController = navController)
+        }
+        composable(AppDestination.Settings.route) {
+            SettingsScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
         }
     }
 }
