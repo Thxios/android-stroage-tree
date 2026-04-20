@@ -10,6 +10,15 @@
     { "id": "phase-2a", "name": "File Deletion",             "status": "completed", "completedAt": "2026-04-20" },
     { "id": "phase-2b", "name": "File Categorization",       "status": "completed", "completedAt": "2026-04-20" },
     { "id": "phase-2c", "name": "View Toggle",               "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-3d", "name": "Installed Apps Virtual Folder", "status": "completed", "completedAt": "2026-04-20",
+      "tasks": [
+        "PACKAGE_USAGE_STATS 권한 추가 및 권한 요청 흐름",
+        "InstalledAppScanner: PackageManager + StorageStatsManager로 앱 목록 및 크기 수집",
+        "가상 FileNode 트리 생성: /Installed Apps/<앱이름> (APK + data + cache)",
+        "ExplorerViewModel: 파일 스캔 완료 후 설치 앱 노드를 root children에 병합",
+        "PermissionScreen 또는 별도 흐름으로 PACKAGE_USAGE_STATS 권한 요청"
+      ]
+    },
     { "id": "phase-3c", "name": "Deep Scan UX & File Filter", "status": "completed", "completedAt": "2026-04-20",
       "tasks": [
         "경로 표시에서 /storage/emulated 접두사 제거",
