@@ -2,10 +2,12 @@ package com.thxios.storagetree.ui.explorer.listview
 
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import com.thxios.storagetree.domain.model.FileNode
+import com.thxios.storagetree.ui.components.verticalScrollbar
 import com.thxios.storagetree.ui.theme.StorageTreeTheme
 
 @Composable
@@ -16,7 +18,11 @@ fun StorageListView(
     modifier: Modifier = Modifier
 ) {
     val totalSize = nodes.sumOf { it.sizeBytes }
-    LazyColumn(modifier = modifier) {
+    val listState = rememberLazyListState()
+    LazyColumn(
+        state = listState,
+        modifier = modifier.verticalScrollbar(listState)
+    ) {
         items(nodes, key = { it.path }) { node ->
             FileNodeRow(
                 node = node,
