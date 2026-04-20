@@ -105,7 +105,7 @@
         "ExplorerScreen: FolderOpen 아이콘 버튼 추가 (스캔 중 아닐 때), FolderPickerSheet 조건부 표시"
       ]
     },
-    { "id": "phase-5d", "name": "Virtual Path Parent Navigation Fix", "status": "pending",
+    { "id": "phase-5d", "name": "Virtual Path Parent Navigation Fix", "status": "completed", "completedAt": "2026-04-21",
       "tasks": [
         "ExplorerViewModel.goToParent(): currentPath==VIRTUAL_APPS_PATH → scanRoot로 명시적 이동",
         "ExplorerViewModel.goToParent(): VIRTUAL_APPS_PATH 하위 경로 → 올바른 상위로 이동",
