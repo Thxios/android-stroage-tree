@@ -53,7 +53,7 @@ class ExplorerViewModel @Inject constructor(
                                 scanState = state,
                                 currentPath = rootPath,
                                 displayedChildren = if (state.rootNode != null)
-                                    state.rootNode.children.sortedByDescending { it.sizeBytes }
+                                    sortChildren(state.rootNode.children)
                                 else
                                     current.displayedChildren
                             )
@@ -62,11 +62,11 @@ class ExplorerViewModel @Inject constructor(
                     is ScanState.Done -> {
                         backStack.clear()
                         scanRoot = state.rootNode
-                        val sorted = state.rootNode.children.sortedByDescending { it.sizeBytes }
+                        val sorted = sortChildren(state.rootNode.children)
                         val summary = categorizeUseCase(state.rootNode)
                         // Merge existing appsNode if already loaded
                         val withApps = if (appsNode != null) {
-                            (listOf(appsNode!!) + sorted).sortedByDescending { it.sizeBytes }
+                            sortChildren(listOf(appsNode!!) + sorted)
                         } else sorted
                         _uiState.update {
                             it.copy(
@@ -75,7 +75,8 @@ class ExplorerViewModel @Inject constructor(
                                 displayedChildren = withApps,
                                 currentPath = rootPath,
                                 categorySummary = summary,
-                                selectedCategory = null
+                                selectedCategory = null,
+                                canGoBack = false
                             )
                         }
                         loadInstalledApps()  // load/refresh apps (runs in coroutine)
@@ -118,10 +119,14 @@ class ExplorerViewModel @Inject constructor(
                         .sortedByDescending { it.sizeBytes }
                     current.copy(
                         displayedChildren = merged,
-                        hasUsageStatsPermission = hasUsageStatsPermission
+                        hasUsageStatsPermission = hasUsageStatsPermission,
+                        usageStatsPermissionChecked = true
                     )
                 } else {
-                    current.copy(hasUsageStatsPermission = hasUsageStatsPermission)
+                    current.copy(
+                        hasUsageStatsPermission = hasUsageStatsPermission,
+                        usageStatsPermissionChecked = true
+                    )
                 }
             }
         }
@@ -129,12 +134,13 @@ class ExplorerViewModel @Inject constructor(
 
     fun navigateTo(node: FileNode) {
         backStack.addLast(Pair(_uiState.value.currentPath, _uiState.value.displayedChildren))
-        val sorted = node.children.sortedByDescending { it.sizeBytes }
+        val sorted = sortChildren(node.children)
         _uiState.update {
             it.copy(
                 displayedChildren = sorted,
                 currentPath = node.path,
-                selectedCategory = null
+                selectedCategory = null,
+                canGoBack = true
             )
         }
         // Only update category summary for real filesystem nodes
@@ -145,11 +151,16 @@ class ExplorerViewModel @Inject constructor(
         }
     }
 
-    fun navigateUp() {
+    fun goBack() {
         if (backStack.isEmpty()) return
         val (path, children) = backStack.removeLast()
         _uiState.update {
-            it.copy(displayedChildren = children, currentPath = path, selectedCategory = null)
+            it.copy(
+                displayedChildren = children,
+                currentPath = path,
+                selectedCategory = null,
+                canGoBack = backStack.isNotEmpty()
+            )
         }
         if (!path.startsWith(InstalledAppScanner.VIRTUAL_APPS_PATH)) {
             findNode(scanRoot, path)?.let { updateCategorySummary(it) }
@@ -158,36 +169,64 @@ class ExplorerViewModel @Inject constructor(
         }
     }
 
-    fun navigateToAncestor(targetPath: String) {
-        // Find index in backstack where path == targetPath
-        val idx = backStack.indexOfFirst { (path, _) -> path == targetPath }
-        if (idx >= 0) {
-            // Remove all entries after idx (inclusive of idx)
-            val (path, children) = backStack[idx]
-            while (backStack.size > idx) backStack.removeLast()
-            _uiState.update { it.copy(displayedChildren = children, currentPath = path, selectedCategory = null) }
-            if (!path.startsWith(InstalledAppScanner.VIRTUAL_APPS_PATH)) {
-                findNode(scanRoot, path)?.let { updateCategorySummary(it) }
+    fun goToParent() {
+        val currentPath = _uiState.value.currentPath
+        if (currentPath.isEmpty()) return
+        // Don't navigate above the selected root
+        val rootPath = _uiState.value.selectedRoot?.path ?: ""
+        if (currentPath == rootPath) return
+        val parentPath = currentPath.substringBeforeLast("/", "")
+        if (parentPath.isEmpty()) return
+        // Push current state to backStack (so back can return here)
+        backStack.addLast(Pair(currentPath, _uiState.value.displayedChildren))
+        // Find parent node in tree
+        val parentNode = findNode(scanRoot, parentPath)
+        if (parentNode != null) {
+            val sorted = sortChildren(parentNode.children)
+            _uiState.update {
+                it.copy(
+                    displayedChildren = sorted,
+                    currentPath = parentPath,
+                    selectedCategory = null,
+                    canGoBack = true
+                )
+            }
+            if (!parentPath.startsWith(InstalledAppScanner.VIRTUAL_APPS_PATH)) {
+                updateCategorySummary(parentNode)
             } else {
                 _uiState.update { it.copy(categorySummary = emptyMap()) }
             }
         } else {
-            // targetPath not in backstack — might be the very root (before any navigation)
-            // Just pop everything and find the closest match
-            while (backStack.isNotEmpty()) {
-                val (path, children) = backStack.last()
-                if (path == targetPath) {
-                    backStack.removeLast()
-                    _uiState.update { it.copy(displayedChildren = children, currentPath = path, selectedCategory = null) }
-                    if (!path.startsWith(InstalledAppScanner.VIRTUAL_APPS_PATH)) {
-                        findNode(scanRoot, path)?.let { updateCategorySummary(it) }
-                    } else {
-                        _uiState.update { it.copy(categorySummary = emptyMap()) }
-                    }
-                    return
-                }
-                backStack.removeLast()
+            // parentNode not in tree (e.g., at scan root level) — just go back
+            goBack()
+        }
+    }
+
+    fun navigateToAncestor(targetPath: String) {
+        val currentPath = _uiState.value.currentPath
+        if (currentPath == targetPath) return
+        // Push current state to backStack
+        backStack.addLast(Pair(currentPath, _uiState.value.displayedChildren))
+        // Find target node and navigate there
+        val targetNode = findNode(scanRoot, targetPath)
+        if (targetNode != null) {
+            val sorted = sortChildren(targetNode.children)
+            _uiState.update {
+                it.copy(
+                    displayedChildren = sorted,
+                    currentPath = targetPath,
+                    selectedCategory = null,
+                    canGoBack = true
+                )
             }
+            if (!targetPath.startsWith(InstalledAppScanner.VIRTUAL_APPS_PATH)) {
+                updateCategorySummary(targetNode)
+            } else {
+                _uiState.update { it.copy(categorySummary = emptyMap()) }
+            }
+        } else {
+            // target not in tree — just pop like before (edge case)
+            backStack.removeLast()
         }
     }
 
@@ -233,20 +272,23 @@ class ExplorerViewModel @Inject constructor(
     fun setFilter(category: FileCategory?) {
         val base = if (backStack.isEmpty()) {
             val root = scanRoot ?: return
-            val baseChildren = root.children.sortedByDescending { it.sizeBytes }
+            val baseChildren = sortChildren(root.children)
             // Include apps node at root level
             if (appsNode != null) {
-                (listOf(appsNode!!) + baseChildren).sortedByDescending { it.sizeBytes }
+                sortChildren(listOf(appsNode!!) + baseChildren)
             } else baseChildren
         } else {
             // Find current node in tree
             val currentNode = findNode(scanRoot, _uiState.value.currentPath)
-            currentNode?.children?.sortedByDescending { it.sizeBytes } ?: _uiState.value.displayedChildren
+            currentNode?.children?.let { sortChildren(it) } ?: _uiState.value.displayedChildren
         }
         val filtered = if (category == null) base
         else base.filter { containsCategory(it, category) }
         _uiState.update { it.copy(selectedCategory = category, displayedChildren = filtered) }
     }
+
+    private fun sortChildren(children: List<FileNode>): List<FileNode> =
+        children.sortedByDescending { it.sizeBytes }
 
     private fun updateCategorySummary(node: FileNode) {
         val summary = categorizeUseCase(node)

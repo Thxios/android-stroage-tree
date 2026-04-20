@@ -93,12 +93,8 @@ fun ExplorerScreen(
     val rootPath = uiState.selectedRoot?.path ?: Environment.getExternalStorageDirectory().absolutePath
     val isAtRoot = uiState.currentPath.isEmpty() || uiState.currentPath == rootPath
 
-    BackHandler {
-        if (!isAtRoot) {
-            viewModel.navigateUp()
-        } else {
-            navController?.popBackStack()
-        }
+    BackHandler(enabled = uiState.canGoBack) {
+        viewModel.goBack()
     }
 
     uiState.pendingDeleteNode?.let { node ->
@@ -122,14 +118,8 @@ fun ExplorerScreen(
             if (node.isDirectory) viewModel.navigateTo(node)
         },
         onNodeLongClick = { node -> viewModel.setPendingDelete(node) },
-        onAppBack = {
-            if (!isAtRoot) {
-                viewModel.navigateUp()
-            } else {
-                navController?.popBackStack()
-            }
-        },
-        onNavigateUp = { viewModel.navigateUp() },
+        onAppBack = { viewModel.goBack() },
+        onNavigateUp = { viewModel.goToParent() },
         onToggleViewMode = { viewModel.toggleViewMode() },
         onRootSelected = { viewModel.selectRoot(it) },
         onBreadcrumbClick = { viewModel.navigateToAncestor(it) },
@@ -214,7 +204,7 @@ private fun ExplorerContent(
             if (uiState.isScanning) {
                 ScanProgressBanner(currentPath = uiState.scanningCurrentPath)
             }
-            if (!uiState.hasUsageStatsPermission) {
+            if (uiState.usageStatsPermissionChecked && !uiState.hasUsageStatsPermission) {
                 UsageStatsPermissionBanner(
                     onOpenSettings = onOpenUsageSettings,
                     modifier = Modifier.fillMaxWidth()

@@ -132,7 +132,7 @@ class ExplorerViewModelTest {
     }
 
     @Test
-    fun `navigateUp after navigateTo restores parent children`() = runTest {
+    fun `goBack after navigateTo restores parent children`() = runTest {
         every { scanUseCase("/root") } returns flowOf(ScanState.Done(rootNode))
 
         viewModel.startScan("/root")
@@ -141,13 +141,13 @@ class ExplorerViewModelTest {
         val parentChildren = viewModel.uiState.value.displayedChildren
 
         viewModel.navigateTo(subDir)
-        viewModel.navigateUp()
+        viewModel.goBack()
 
         assertEquals(parentChildren, viewModel.uiState.value.displayedChildren)
     }
 
     @Test
-    fun `navigateUp_restoresCurrentPath`() = runTest {
+    fun `goBack_restoresCurrentPath`() = runTest {
         every { scanUseCase("/root") } returns flowOf(ScanState.Done(rootNode))
 
         viewModel.startScan("/root")
@@ -158,12 +158,12 @@ class ExplorerViewModelTest {
         viewModel.navigateTo(subDir)
         assertEquals("/root/dir", viewModel.uiState.value.currentPath)
 
-        viewModel.navigateUp()
+        viewModel.goBack()
         assertEquals("/root", viewModel.uiState.value.currentPath)
     }
 
     @Test
-    fun `navigateUp at root with empty backstack is a no-op`() = runTest {
+    fun `goBack at root with empty backstack is a no-op`() = runTest {
         every { scanUseCase("/root") } returns flowOf(ScanState.Done(rootNode))
 
         viewModel.startScan("/root")
@@ -171,7 +171,7 @@ class ExplorerViewModelTest {
 
         val stateBefore = viewModel.uiState.value
 
-        viewModel.navigateUp()
+        viewModel.goBack()
 
         assertEquals(stateBefore, viewModel.uiState.value)
     }

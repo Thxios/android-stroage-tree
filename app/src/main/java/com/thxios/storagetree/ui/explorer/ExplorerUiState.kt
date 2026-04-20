@@ -20,4 +20,6 @@ data class ExplorerUiState(
     val selectedRoot: StorageRoot? = null,
     val selectedCategory: FileCategory? = null,
     val hasUsageStatsPermission: Boolean = false,
+    val usageStatsPermissionChecked: Boolean = false,
+    val canGoBack: Boolean = false,
 )
