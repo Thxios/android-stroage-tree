@@ -19,4 +19,5 @@ data class ExplorerUiState(
     val availableRoots: List<StorageRoot> = emptyList(),
     val selectedRoot: StorageRoot? = null,
     val selectedCategory: FileCategory? = null,
+    val hasUsageStatsPermission: Boolean = false,
 )

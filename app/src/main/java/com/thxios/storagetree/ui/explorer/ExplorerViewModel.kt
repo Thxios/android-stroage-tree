@@ -3,6 +3,7 @@ package com.thxios.storagetree.ui.explorer
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.thxios.storagetree.data.scanner.InstalledAppScanner
 import com.thxios.storagetree.data.storage.StorageRoot
 import com.thxios.storagetree.data.storage.StorageVolumeHelper
 import com.thxios.storagetree.domain.model.FileCategory
@@ -14,6 +15,7 @@ import com.thxios.storagetree.domain.usecase.DeleteNodeUseCase
 import com.thxios.storagetree.domain.usecase.ScanDirectoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,11 +29,14 @@ class ExplorerViewModel @Inject constructor(
     private val deleteUseCase: DeleteNodeUseCase,
     private val categorizeUseCase: CategorizeFilesUseCase,
     private val storageVolumeHelper: StorageVolumeHelper,
+    private val installedAppScanner: InstalledAppScanner,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val backStack = ArrayDeque<Pair<String, List<FileNode>>>()
     private var scanRoot: FileNode? = null
+    private var appsNode: FileNode? = null
+    private var hasUsageStatsPermission = false
 
     private val _uiState = MutableStateFlow(ExplorerUiState())
     val uiState: StateFlow<ExplorerUiState> = _uiState.asStateFlow()
@@ -59,16 +64,21 @@ class ExplorerViewModel @Inject constructor(
                         scanRoot = state.rootNode
                         val sorted = state.rootNode.children.sortedByDescending { it.sizeBytes }
                         val summary = categorizeUseCase(state.rootNode)
+                        // Merge existing appsNode if already loaded
+                        val withApps = if (appsNode != null) {
+                            (listOf(appsNode!!) + sorted).sortedByDescending { it.sizeBytes }
+                        } else sorted
                         _uiState.update {
                             it.copy(
                                 isScanning = false,
                                 scanState = state,
-                                displayedChildren = sorted,
+                                displayedChildren = withApps,
                                 currentPath = rootPath,
                                 categorySummary = summary,
                                 selectedCategory = null
                             )
                         }
+                        loadInstalledApps()  // load/refresh apps (runs in coroutine)
                     }
                     is ScanState.Error -> {
                         _uiState.update {
@@ -96,6 +106,27 @@ class ExplorerViewModel @Inject constructor(
         startScan(root.path)
     }
 
+    fun loadInstalledApps() {
+        viewModelScope.launch(Dispatchers.IO) {
+            hasUsageStatsPermission = installedAppScanner.hasUsageStatsPermission(context)
+            val node = installedAppScanner.buildVirtualAppsNode(context)
+            appsNode = node
+            // Merge into current displayed children at root level
+            _uiState.update { current ->
+                if (current.currentPath == (current.selectedRoot?.path ?: "") || backStack.isEmpty()) {
+                    val merged = (listOf(node) + (scanRoot?.children ?: current.displayedChildren))
+                        .sortedByDescending { it.sizeBytes }
+                    current.copy(
+                        displayedChildren = merged,
+                        hasUsageStatsPermission = hasUsageStatsPermission
+                    )
+                } else {
+                    current.copy(hasUsageStatsPermission = hasUsageStatsPermission)
+                }
+            }
+        }
+    }
+
     fun navigateTo(node: FileNode) {
         backStack.addLast(Pair(_uiState.value.currentPath, _uiState.value.displayedChildren))
         val sorted = node.children.sortedByDescending { it.sizeBytes }
@@ -106,7 +137,12 @@ class ExplorerViewModel @Inject constructor(
                 selectedCategory = null
             )
         }
-        updateCategorySummary(node)
+        // Only update category summary for real filesystem nodes
+        if (!node.path.startsWith(InstalledAppScanner.VIRTUAL_APPS_PATH)) {
+            updateCategorySummary(node)
+        } else {
+            _uiState.update { it.copy(categorySummary = emptyMap()) }
+        }
     }
 
     fun navigateUp() {
@@ -115,7 +151,11 @@ class ExplorerViewModel @Inject constructor(
         _uiState.update {
             it.copy(displayedChildren = children, currentPath = path, selectedCategory = null)
         }
-        findNode(scanRoot, path)?.let { updateCategorySummary(it) }
+        if (!path.startsWith(InstalledAppScanner.VIRTUAL_APPS_PATH)) {
+            findNode(scanRoot, path)?.let { updateCategorySummary(it) }
+        } else {
+            _uiState.update { it.copy(categorySummary = emptyMap()) }
+        }
     }
 
     fun navigateToAncestor(targetPath: String) {
@@ -126,7 +166,11 @@ class ExplorerViewModel @Inject constructor(
             val (path, children) = backStack[idx]
             while (backStack.size > idx) backStack.removeLast()
             _uiState.update { it.copy(displayedChildren = children, currentPath = path, selectedCategory = null) }
-            findNode(scanRoot, path)?.let { updateCategorySummary(it) }
+            if (!path.startsWith(InstalledAppScanner.VIRTUAL_APPS_PATH)) {
+                findNode(scanRoot, path)?.let { updateCategorySummary(it) }
+            } else {
+                _uiState.update { it.copy(categorySummary = emptyMap()) }
+            }
         } else {
             // targetPath not in backstack — might be the very root (before any navigation)
             // Just pop everything and find the closest match
@@ -135,7 +179,11 @@ class ExplorerViewModel @Inject constructor(
                 if (path == targetPath) {
                     backStack.removeLast()
                     _uiState.update { it.copy(displayedChildren = children, currentPath = path, selectedCategory = null) }
-                    findNode(scanRoot, path)?.let { updateCategorySummary(it) }
+                    if (!path.startsWith(InstalledAppScanner.VIRTUAL_APPS_PATH)) {
+                        findNode(scanRoot, path)?.let { updateCategorySummary(it) }
+                    } else {
+                        _uiState.update { it.copy(categorySummary = emptyMap()) }
+                    }
                     return
                 }
                 backStack.removeLast()
@@ -152,11 +200,16 @@ class ExplorerViewModel @Inject constructor(
     }
 
     fun setPendingDelete(node: FileNode?) {
+        if (node != null && node.path.startsWith(InstalledAppScanner.VIRTUAL_APPS_PATH)) return
         _uiState.update { it.copy(pendingDeleteNode = node) }
     }
 
     fun deleteNode() {
         val node = _uiState.value.pendingDeleteNode ?: return
+        if (node.path.startsWith(InstalledAppScanner.VIRTUAL_APPS_PATH)) {
+            _uiState.update { it.copy(pendingDeleteNode = null, error = "설치된 앱은 여기서 삭제할 수 없습니다") }
+            return
+        }
         viewModelScope.launch {
             val result = deleteUseCase(node)
             if (result.isSuccess) {
@@ -180,7 +233,11 @@ class ExplorerViewModel @Inject constructor(
     fun setFilter(category: FileCategory?) {
         val base = if (backStack.isEmpty()) {
             val root = scanRoot ?: return
-            root.children.sortedByDescending { it.sizeBytes }
+            val baseChildren = root.children.sortedByDescending { it.sizeBytes }
+            // Include apps node at root level
+            if (appsNode != null) {
+                (listOf(appsNode!!) + baseChildren).sortedByDescending { it.sizeBytes }
+            } else baseChildren
         } else {
             // Find current node in tree
             val currentNode = findNode(scanRoot, _uiState.value.currentPath)
