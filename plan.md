@@ -335,3 +335,153 @@ class StorageTreeApplication : Application()
 - `ViewToggleTest`: 토글 버튼 클릭 후 화면 전환 확인
 
 **커밋:** `test: view toggle tests` → `feat: list/treemap view toggle`
+
+---
+
+### Phase 5A: Splash Screen
+
+**목적:** 권한이 이미 있을 때 Permission 화면이 잠깐 보이는 깜빡임 완전 제거
+
+**생성 파일:**
+- `app/src/main/.../ui/splash/SplashViewModel.kt`
+- `app/src/main/.../ui/splash/SplashScreen.kt`
+
+**수정 파일:**
+- `app/src/main/.../ui/navigation/AppDestination.kt` — `object Splash : AppDestination("splash")` 추가
+- `app/src/main/.../ui/navigation/AppNavGraph.kt` — `startDestination = Splash`, Splash 라우트 추가
+
+**구현 내용:**
+- `SplashViewModel`: `@HiltViewModel`, `@ApplicationContext` 주입. `init{}`에서 즉시 권한 체크:
+  - API 30+: `Environment.isExternalStorageManager()`
+  - API 26-29: `ContextCompat.checkSelfPermission(READ_EXTERNAL_STORAGE)`
+  - 결과에 따라 `_navTarget: MutableStateFlow<NavTarget?>` 를 `Permission` 또는 `Explorer`로 설정
+- `SplashScreen`: 앱 이름 + `CircularProgressIndicator`. `navTarget` 수집 → `LaunchedEffect(navTarget)`으로 즉시 navigate (popUpTo Splash inclusive)
+- `AppNavGraph`: Splash → Permission (권한 없음) / Explorer (권한 있음). Permission → Explorer는 기존 popUpTo 유지.
+
+**커밋:** `feat: add splash screen to eliminate permission screen flicker`
+
+---
+
+### Phase 5B: 스캔 1회 실행 + Reload 버튼
+
+**목적:** 설정 → 돌아오기 시 재스캔 방지. Reload 버튼으로 사용자가 명시적으로 재스캔 가능.
+
+**수정 파일:**
+- `app/src/main/.../ui/explorer/ExplorerViewModel.kt`
+- `app/src/main/.../ui/explorer/ExplorerScreen.kt`
+
+**구현 내용:**
+- `ExplorerViewModel`에 `private var scanStarted = false` 추가
+- `startScan()` 시작부에 `scanStarted = true` 추가
+- `startScanIfNeeded(rootPath: String)`: `if (!scanStarted) startScan(rootPath)`
+- `reloadScan()`: `scanStarted = false` 후 `startScan(selectedRoot.path)`
+- `reloadInstalledAppsIfPermissionChanged()`: `hasUsageStatsPermission` 값이 이전과 다를 때만 `loadInstalledApps()` 호출 (ON_RESUME 시 불필요한 전체 재로드 방지)
+- `ExplorerScreen.kt`:
+  - `LaunchedEffect(Unit)`: `startScan` → `startScanIfNeeded`로 변경
+  - `DisposableEffect ON_RESUME`: `loadInstalledApps()` → `reloadInstalledAppsIfPermissionChanged()`
+  - `TopAppBar` actions에 `Icons.Filled.Refresh` 아이콘 버튼 추가. `enabled = !uiState.isScanning`
+
+**커밋:** `feat: scan once per session with explicit reload button`
+
+---
+
+### Phase 5C: 시작 폴더 선택 (서브폴더 피커)
+
+**목적:** 스캔 시작 전 특정 서브폴더(예: `/0/Downloads`)를 선택해 스캔 범위 제한 가능.
+
+**생성 파일:**
+- `app/src/main/.../ui/explorer/FolderPickerSheet.kt`
+
+**수정 파일:**
+- `app/src/main/.../ui/explorer/ExplorerUiState.kt` — `showFolderPicker: Boolean = false`, `pickerCurrentPath: String = ""`, `pickerEntries: List<String> = emptyList()` 추가
+- `app/src/main/.../ui/explorer/ExplorerViewModel.kt` — picker 관련 메서드 추가
+- `app/src/main/.../ui/explorer/ExplorerScreen.kt` — 폴더 아이콘 버튼 + FolderPickerSheet 통합
+
+**구현 내용:**
+- `ExplorerViewModel`: `openFolderPicker()`, `closeFolderPicker()`, `navigatePickerInto(path)`, `startScanFromPicker(path)`, `loadPickerEntries(path)` 추가
+  - `loadPickerEntries(path)`: `File(path).listFiles()?.filter { it.isDirectory && !it.isHidden }?.sorted()` → `pickerEntries` 업데이트
+  - `startScanFromPicker(path)`: 피커 닫고 `scanStarted = false` 후 `startScan(path)`
+- `FolderPickerSheet`: `ModalBottomSheet`. 상단 breadcrumb (탭 가능) + 서브디렉토리 `LazyColumn` + "여기서 스캔 시작" `Button`. `@Preview` 포함.
+- `ExplorerScreen`: 스캔 중 아닐 때 `Icons.Filled.FolderOpen` 버튼 → `openFolderPicker()`. `uiState.showFolderPicker` 시 `FolderPickerSheet` 표시.
+
+**커밋:** `feat: folder picker sheet for selecting scan start directory`
+
+---
+
+### Phase 5D: Virtual 경로 상위 폴더 이동 수정
+
+**목적:** "설치된 앱" 가상 경로에서 "^" 버튼으로 실제 파일시스템 루트로 이동 가능.
+
+**수정 파일:**
+- `app/src/main/.../ui/explorer/ExplorerViewModel.kt`
+
+**구현 내용:**
+- `goToParent()` 함수 앞부분에 가상 경로 처리 추가 (기존 파일시스템 로직 앞에 삽입):
+  1. `currentPath == VIRTUAL_APPS_PATH`: backStack push → scanRoot children으로 이동 (rootPath로)
+  2. `currentPath.startsWith(VIRTUAL_APPS_PATH + "/")`: pkg 하위면 pkg 레벨로, pkg 레벨이면 VIRTUAL_APPS_PATH로 이동
+- `findVirtualNode(root: FileNode, path: String): FileNode?` private 헬퍼 추가 (가상 트리 탐색용)
+
+**커밋:** `fix: navigate to fs root from virtual installed-apps path via parent button`
+
+---
+
+### Phase 5E: 정렬 방식 화면 내 드롭다운
+
+**목적:** 정렬 방식 선택을 설정 페이지에서 제거하고 탐색기 화면 내 드롭다운으로 이전.
+
+**수정 파일:**
+- `app/src/main/.../ui/explorer/ExplorerUiState.kt` — `sortOrder: SortOrder = SortOrder.SIZE_DESC` 추가
+- `app/src/main/.../ui/explorer/ExplorerViewModel.kt` — `setSortOrder(SortOrder)` 추가, `refreshDisplayedChildren()` 끝에 `sortOrder` UiState 반영
+- `app/src/main/.../data/preferences/PreferencesRepository.kt` — `suspend fun updateSortOrder(SortOrder)` 확인/추가
+- `app/src/main/.../ui/explorer/ExplorerScreen.kt` — `SortOrderDropdown` composable 추가 + `ExplorerContent`에 통합
+- `app/src/main/.../ui/settings/SettingsScreen.kt` — sortOrder RadioButton 그룹 제거
+
+**구현 내용:**
+- `SortOrderDropdown`: `ExposedDropdownMenuBox` + `OutlinedTextField(readOnly)` + `DropdownMenuItem`s. label 매핑: `SIZE_DESC→"크기 (큰 순)"`, `NAME_ASC→"이름 (가나다순)"`, `DATE_DESC→"날짜 (최신순)"`, `NATURAL_NAME_ASC→"이름 (자연 순서)"`. `@Preview` 포함.
+- `ExplorerContent`: `ScanProgressBanner` 아래, `CategoryChipRow` 위에 `SortOrderDropdown` 배치.
+- 정렬 변경 → `PreferencesRepository.updateSortOrder()` → `onSettingsChanged()` 자동 호출 → `refreshDisplayedChildren()`
+
+**커밋:** `feat: move sort order selection to in-screen dropdown`
+
+---
+
+### Phase 5F: Multi-Volume StorageStatsManager
+
+**목적:** 모든 스토리지 볼륨의 UUID로 `StorageStatsManager` 쿼리 → OBB/외부 데이터 정확 측정. 원신 등 대형 게임 크기 정확도 개선.
+
+**수정 파일:**
+- `app/src/main/.../data/scanner/InstalledAppScanner.kt`
+
+**API 원리:**
+| UUID | 포함 항목 |
+|------|----------|
+| `UUID_DEFAULT` | `/data/data/<pkg>/` (내부 data + cache) |
+| 주 외부 볼륨 UUID | `Android/data/<pkg>/` + `Android/obb/<pkg>/` (OBB 포함!) |
+| SD카드 UUID | SD카드의 `Android/data/<pkg>/` |
+
+`StorageManager.getUuidForPath(File)` (API 26+)으로 각 볼륨의 UUID 조회.
+
+**구현 내용:**
+- `getAllVolumeStats(storageStatsManager, storageManager, packageName): Pair<Long, Long>` private 메서드 추가:
+  ```kotlin
+  storageManager.storageVolumes.forEach { volume ->
+      val dir = volume.directory ?: return@forEach
+      try {
+          val uuid = storageManager.getUuidForPath(dir)
+          val stats = storageStatsManager.queryStatsForPackage(uuid, packageName, Process.myUserHandle())
+          totalData += stats.dataBytes
+          totalCache += stats.cacheBytes
+      } catch (_: Exception) { }
+  }
+  ```
+- `buildVirtualAppsNode()` 내에서:
+  - `context.getSystemService(Context.STORAGE_SERVICE)` 로 `storageManager` 취득
+  - 기존 `UUID_DEFAULT` 단일 쿼리 블록 → `getAllVolumeStats()` 호출로 교체
+  - OBB `walkTopDown` 블록 (line 83-91) 제거
+  - 외부 데이터 `walkTopDown` 블록 (line 94-103) 제거
+  - `totalSize = apkSize + totalDataSize + totalCacheSize` (obbSize, externalDataSize 제거)
+  - 자식 노드: APK / 데이터(`totalDataSize`) / 캐시(`totalCacheSize`) — OBB 노드 제거
+
+**권한:** `PACKAGE_USAGE_STATS`만으로 충분. 없을 때: data/cache = 0 (기존과 동일).
+
+**커밋:** `feat: multi-volume StorageStatsManager for accurate installed app size`
