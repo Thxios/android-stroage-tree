@@ -22,4 +22,7 @@ data class ExplorerUiState(
     val hasUsageStatsPermission: Boolean = false,
     val usageStatsPermissionChecked: Boolean = false,
     val canGoBack: Boolean = false,
+    val showFolderPicker: Boolean = false,
+    val pickerCurrentPath: String = "",
+    val pickerEntries: List<String> = emptyList(),
 )

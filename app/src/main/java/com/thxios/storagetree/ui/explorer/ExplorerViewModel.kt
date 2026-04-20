@@ -396,4 +396,37 @@ class ExplorerViewModel @Inject constructor(
         if (!node.isDirectory) return FileCategory.of(node.name) == category
         return node.children.any { containsCategory(it, category) }
     }
+
+    fun openFolderPicker() {
+        val startPath = _uiState.value.selectedRoot?.path ?: _uiState.value.currentPath
+        _uiState.update { it.copy(showFolderPicker = true, pickerCurrentPath = startPath) }
+        loadPickerEntries(startPath)
+    }
+
+    fun closeFolderPicker() {
+        _uiState.update { it.copy(showFolderPicker = false) }
+    }
+
+    fun navigatePickerInto(path: String) {
+        _uiState.update { it.copy(pickerCurrentPath = path) }
+        loadPickerEntries(path)
+    }
+
+    fun startScanFromPicker(path: String) {
+        closeFolderPicker()
+        scanStarted = false
+        startScan(path)
+    }
+
+    private fun loadPickerEntries(path: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val entries = java.io.File(path)
+                .listFiles()
+                ?.filter { it.isDirectory && !it.isHidden }
+                ?.sortedBy { it.name }
+                ?.map { it.absolutePath }
+                ?: emptyList()
+            _uiState.update { it.copy(pickerEntries = entries) }
+        }
+    }
 }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Refresh
@@ -134,7 +135,11 @@ fun ExplorerScreen(
         onOpenSettings = {
             navController?.navigate(AppDestination.Settings.route)
         },
-        onReload = { viewModel.reloadScan() }
+        onReload = { viewModel.reloadScan() },
+        onOpenFolderPicker = { viewModel.openFolderPicker() },
+        onCloseFolderPicker = { viewModel.closeFolderPicker() },
+        onNavigatePickerInto = { viewModel.navigatePickerInto(it) },
+        onStartScanFromPicker = { viewModel.startScanFromPicker(it) }
     )
 }
 
@@ -161,7 +166,11 @@ private fun ExplorerContent(
     onCategoryFilter: (FileCategory?) -> Unit = {},
     onOpenUsageSettings: () -> Unit = {},
     onOpenSettings: () -> Unit = {},
-    onReload: () -> Unit = {}
+    onReload: () -> Unit = {},
+    onOpenFolderPicker: () -> Unit = {},
+    onCloseFolderPicker: () -> Unit = {},
+    onNavigatePickerInto: (String) -> Unit = {},
+    onStartScanFromPicker: (String) -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -191,6 +200,14 @@ private fun ExplorerContent(
                             Icon(
                                 imageVector = Icons.Filled.KeyboardArrowUp,
                                 contentDescription = "Go to parent folder"
+                            )
+                        }
+                    }
+                    if (!uiState.isScanning) {
+                        IconButton(onClick = onOpenFolderPicker) {
+                            Icon(
+                                imageVector = Icons.Filled.FolderOpen,
+                                contentDescription = "폴더 선택해서 스캔"
                             )
                         }
                     }
@@ -266,6 +283,16 @@ private fun ExplorerContent(
                 )
             }
         }
+    }
+
+    if (uiState.showFolderPicker) {
+        FolderPickerSheet(
+            currentPath = uiState.pickerCurrentPath,
+            entries = uiState.pickerEntries,
+            onDismiss = onCloseFolderPicker,
+            onNavigateInto = onNavigatePickerInto,
+            onStartScan = onStartScanFromPicker
+        )
     }
 }
 
