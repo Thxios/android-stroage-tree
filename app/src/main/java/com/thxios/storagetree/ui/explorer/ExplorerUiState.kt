@@ -18,4 +18,5 @@ data class ExplorerUiState(
     val viewMode: ViewMode = ViewMode.LIST,
     val availableRoots: List<StorageRoot> = emptyList(),
     val selectedRoot: StorageRoot? = null,
+    val selectedCategory: FileCategory? = null,
 )

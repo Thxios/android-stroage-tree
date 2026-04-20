@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.thxios.storagetree.data.storage.StorageRoot
 import com.thxios.storagetree.data.storage.StorageVolumeHelper
+import com.thxios.storagetree.domain.model.FileCategory
 import com.thxios.storagetree.domain.model.FileNode
 import com.thxios.storagetree.domain.model.ScanState
 import com.thxios.storagetree.domain.model.ViewMode
@@ -30,6 +31,7 @@ class ExplorerViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val backStack = ArrayDeque<Pair<String, List<FileNode>>>()
+    private var scanRoot: FileNode? = null
 
     private val _uiState = MutableStateFlow(ExplorerUiState())
     val uiState: StateFlow<ExplorerUiState> = _uiState.asStateFlow()
@@ -54,6 +56,7 @@ class ExplorerViewModel @Inject constructor(
                     }
                     is ScanState.Done -> {
                         backStack.clear()
+                        scanRoot = state.rootNode
                         val sorted = state.rootNode.children.sortedByDescending { it.sizeBytes }
                         val summary = categorizeUseCase(state.rootNode)
                         _uiState.update {
@@ -62,7 +65,8 @@ class ExplorerViewModel @Inject constructor(
                                 scanState = state,
                                 displayedChildren = sorted,
                                 currentPath = rootPath,
-                                categorySummary = summary
+                                categorySummary = summary,
+                                selectedCategory = null
                             )
                         }
                     }
@@ -98,16 +102,44 @@ class ExplorerViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 displayedChildren = sorted,
-                currentPath = node.path
+                currentPath = node.path,
+                selectedCategory = null
             )
         }
+        updateCategorySummary(node)
     }
 
     fun navigateUp() {
         if (backStack.isEmpty()) return
         val (path, children) = backStack.removeLast()
         _uiState.update {
-            it.copy(displayedChildren = children, currentPath = path)
+            it.copy(displayedChildren = children, currentPath = path, selectedCategory = null)
+        }
+        findNode(scanRoot, path)?.let { updateCategorySummary(it) }
+    }
+
+    fun navigateToAncestor(targetPath: String) {
+        // Find index in backstack where path == targetPath
+        val idx = backStack.indexOfFirst { (path, _) -> path == targetPath }
+        if (idx >= 0) {
+            // Remove all entries after idx (inclusive of idx)
+            val (path, children) = backStack[idx]
+            while (backStack.size > idx) backStack.removeLast()
+            _uiState.update { it.copy(displayedChildren = children, currentPath = path, selectedCategory = null) }
+            findNode(scanRoot, path)?.let { updateCategorySummary(it) }
+        } else {
+            // targetPath not in backstack — might be the very root (before any navigation)
+            // Just pop everything and find the closest match
+            while (backStack.isNotEmpty()) {
+                val (path, children) = backStack.last()
+                if (path == targetPath) {
+                    backStack.removeLast()
+                    _uiState.update { it.copy(displayedChildren = children, currentPath = path, selectedCategory = null) }
+                    findNode(scanRoot, path)?.let { updateCategorySummary(it) }
+                    return
+                }
+                backStack.removeLast()
+            }
         }
     }
 
@@ -143,5 +175,35 @@ class ExplorerViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun setFilter(category: FileCategory?) {
+        val base = if (backStack.isEmpty()) {
+            val root = scanRoot ?: return
+            root.children.sortedByDescending { it.sizeBytes }
+        } else {
+            // Find current node in tree
+            val currentNode = findNode(scanRoot, _uiState.value.currentPath)
+            currentNode?.children?.sortedByDescending { it.sizeBytes } ?: _uiState.value.displayedChildren
+        }
+        val filtered = if (category == null) base
+        else base.filter { containsCategory(it, category) }
+        _uiState.update { it.copy(selectedCategory = category, displayedChildren = filtered) }
+    }
+
+    private fun updateCategorySummary(node: FileNode) {
+        val summary = categorizeUseCase(node)
+        _uiState.update { it.copy(categorySummary = summary, selectedCategory = null) }
+    }
+
+    private fun findNode(root: FileNode?, path: String): FileNode? {
+        if (root == null) return null
+        if (root.path == path) return root
+        return root.children.firstNotNullOfOrNull { findNode(it, path) }
+    }
+
+    private fun containsCategory(node: FileNode, category: FileCategory): Boolean {
+        if (!node.isDirectory) return FileCategory.of(node.name) == category
+        return node.children.any { containsCategory(it, category) }
     }
 }
