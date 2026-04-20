@@ -1,6 +1,9 @@
 package com.thxios.storagetree.ui
 
+import android.content.Context
 import app.cash.turbine.test
+import com.thxios.storagetree.data.storage.StorageRoot
+import com.thxios.storagetree.data.storage.StorageVolumeHelper
 import com.thxios.storagetree.domain.model.FileNode
 import com.thxios.storagetree.domain.model.ScanState
 import com.thxios.storagetree.domain.model.ViewMode
@@ -32,6 +35,8 @@ class ExplorerViewModelTest {
     private val scanUseCase = mockk<ScanDirectoryUseCase>()
     private val deleteUseCase = mockk<DeleteNodeUseCase>(relaxed = true)
     private val categorizeUseCase = CategorizeFilesUseCase()
+    private val storageVolumeHelper = mockk<StorageVolumeHelper>(relaxed = true)
+    private val context = mockk<Context>(relaxed = true)
     private lateinit var viewModel: ExplorerViewModel
 
     private val childA = FileNode(name = "a.txt", path = "/root/a.txt", sizeBytes = 300L, isDirectory = false)
@@ -49,7 +54,8 @@ class ExplorerViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        viewModel = ExplorerViewModel(scanUseCase, deleteUseCase, categorizeUseCase)
+        every { storageVolumeHelper.getAvailableRoots(any()) } returns emptyList()
+        viewModel = ExplorerViewModel(scanUseCase, deleteUseCase, categorizeUseCase, storageVolumeHelper, context)
     }
 
     @After

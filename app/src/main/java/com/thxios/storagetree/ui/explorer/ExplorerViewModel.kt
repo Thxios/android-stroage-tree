@@ -1,7 +1,10 @@
 package com.thxios.storagetree.ui.explorer
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.thxios.storagetree.data.storage.StorageRoot
+import com.thxios.storagetree.data.storage.StorageVolumeHelper
 import com.thxios.storagetree.domain.model.FileNode
 import com.thxios.storagetree.domain.model.ScanState
 import com.thxios.storagetree.domain.model.ViewMode
@@ -9,6 +12,7 @@ import com.thxios.storagetree.domain.usecase.CategorizeFilesUseCase
 import com.thxios.storagetree.domain.usecase.DeleteNodeUseCase
 import com.thxios.storagetree.domain.usecase.ScanDirectoryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,7 +24,9 @@ import javax.inject.Inject
 class ExplorerViewModel @Inject constructor(
     private val scanUseCase: ScanDirectoryUseCase,
     private val deleteUseCase: DeleteNodeUseCase,
-    private val categorizeUseCase: CategorizeFilesUseCase
+    private val categorizeUseCase: CategorizeFilesUseCase,
+    private val storageVolumeHelper: StorageVolumeHelper,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val backStack = ArrayDeque<Pair<String, List<FileNode>>>()
@@ -34,18 +40,15 @@ class ExplorerViewModel @Inject constructor(
                 when (state) {
                     is ScanState.Scanning -> {
                         _uiState.update { current ->
-                            val updatedChildren = if (state.rootNode != null) {
-                                state.rootNode.children.sortedByDescending { it.sizeBytes }
-                            } else {
-                                current.displayedChildren
-                            }
-                            val updatedPath = if (state.rootNode != null) rootPath else current.currentPath
                             current.copy(
                                 isScanning = true,
                                 scanningCurrentPath = state.currentPath,
                                 scanState = state,
-                                displayedChildren = updatedChildren,
-                                currentPath = updatedPath
+                                currentPath = rootPath,
+                                displayedChildren = if (state.rootNode != null)
+                                    state.rootNode.children.sortedByDescending { it.sizeBytes }
+                                else
+                                    current.displayedChildren
                             )
                         }
                     }
@@ -76,6 +79,17 @@ class ExplorerViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    fun loadStorageRoots() {
+        val roots = storageVolumeHelper.getAvailableRoots(context)
+        val selected = roots.firstOrNull()
+        _uiState.update { it.copy(availableRoots = roots, selectedRoot = selected) }
+    }
+
+    fun selectRoot(root: StorageRoot) {
+        _uiState.update { it.copy(selectedRoot = root) }
+        startScan(root.path)
     }
 
     fun navigateTo(node: FileNode) {
