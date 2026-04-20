@@ -10,6 +10,15 @@
     { "id": "phase-2a", "name": "File Deletion",             "status": "completed", "completedAt": "2026-04-20" },
     { "id": "phase-2b", "name": "File Categorization",       "status": "completed", "completedAt": "2026-04-20" },
     { "id": "phase-2c", "name": "View Toggle",               "status": "completed", "completedAt": "2026-04-20" },
+    { "id": "phase-3c", "name": "Deep Scan UX & File Filter", "status": "completed", "completedAt": "2026-04-20",
+      "tasks": [
+        "경로 표시에서 /storage/emulated 접두사 제거",
+        "경로 breadcrumb 클릭으로 해당 경로로 이동",
+        "LazyColumn 스크롤바 표시",
+        "FileScanner: 깊은 경로도 throttle 기반 실시간 partial 업데이트",
+        "파일 타입 필터: 현재 폴더 기준 동적 categorySummary + 선택 시 필터링"
+      ]
+    },
     { "id": "phase-3b", "name": "Scan Root Selection & Partial Scan Display", "status": "completed", "completedAt": "2026-04-20",
       "tasks": [
         "FileScanner: 상위 폴더 스캔 완료 시마다 partial rootNode emit",
