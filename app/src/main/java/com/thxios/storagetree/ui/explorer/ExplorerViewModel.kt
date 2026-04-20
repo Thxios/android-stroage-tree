@@ -234,8 +234,64 @@ class ExplorerViewModel @Inject constructor(
     fun goToParent() {
         val currentPath = _uiState.value.currentPath
         if (currentPath.isEmpty()) return
-        // Don't navigate above the selected root
         val rootPath = _uiState.value.selectedRoot?.path ?: ""
+
+        if (currentPath == InstalledAppScanner.VIRTUAL_APPS_PATH) {
+            backStack.addLast(Pair(currentPath, _uiState.value.displayedChildren))
+            val root = scanRoot
+            if (root != null) {
+                val sorted = sortChildren(root.children)
+                val withApps = if (currentSettings.showInstalledApps && appsNode != null) {
+                    sortChildren(listOf(appsNode!!) + sorted.filter { it.path != appsNode!!.path })
+                } else sorted
+                _uiState.update {
+                    it.copy(
+                        displayedChildren = withApps,
+                        currentPath = rootPath,
+                        selectedCategory = null,
+                        canGoBack = true
+                    )
+                }
+                updateCategorySummary(root)
+            } else {
+                goBack()
+            }
+            return
+        }
+
+        if (currentPath.startsWith(InstalledAppScanner.VIRTUAL_APPS_PATH + "/")) {
+            val suffix = currentPath.removePrefix(InstalledAppScanner.VIRTUAL_APPS_PATH + "/")
+            backStack.addLast(Pair(currentPath, _uiState.value.displayedChildren))
+            if (!suffix.contains("/")) {
+                val appsRoot = appsNode ?: findVirtualNode(appsNode, InstalledAppScanner.VIRTUAL_APPS_PATH)
+                val children = appsRoot?.children ?: emptyList()
+                _uiState.update {
+                    it.copy(
+                        displayedChildren = sortChildren(children),
+                        currentPath = InstalledAppScanner.VIRTUAL_APPS_PATH,
+                        selectedCategory = null,
+                        canGoBack = true,
+                        categorySummary = emptyMap()
+                    )
+                }
+            } else {
+                val pkgPath = InstalledAppScanner.VIRTUAL_APPS_PATH + "/" + suffix.substringBefore("/")
+                val pkgNode = findVirtualNode(appsNode, pkgPath)
+                val children = pkgNode?.children ?: emptyList()
+                _uiState.update {
+                    it.copy(
+                        displayedChildren = sortChildren(children),
+                        currentPath = pkgPath,
+                        selectedCategory = null,
+                        canGoBack = true,
+                        categorySummary = emptyMap()
+                    )
+                }
+            }
+            return
+        }
+
+        // Don't navigate above the selected root
         if (currentPath == rootPath) return
         val parentPath = currentPath.substringBeforeLast("/", "")
         if (parentPath.isEmpty()) return
@@ -253,11 +309,7 @@ class ExplorerViewModel @Inject constructor(
                     canGoBack = true
                 )
             }
-            if (!parentPath.startsWith(InstalledAppScanner.VIRTUAL_APPS_PATH)) {
-                updateCategorySummary(parentNode)
-            } else {
-                _uiState.update { it.copy(categorySummary = emptyMap()) }
-            }
+            updateCategorySummary(parentNode)
         } else {
             // parentNode not in tree (e.g., at scan root level) — just go back
             goBack()
@@ -390,6 +442,12 @@ class ExplorerViewModel @Inject constructor(
         if (root == null) return null
         if (root.path == path) return root
         return root.children.firstNotNullOfOrNull { findNode(it, path) }
+    }
+
+    private fun findVirtualNode(root: FileNode?, path: String): FileNode? {
+        if (root == null) return null
+        if (root.path == path) return root
+        return root.children.firstNotNullOfOrNull { findVirtualNode(it, path) }
     }
 
     private fun containsCategory(node: FileNode, category: FileCategory): Boolean {
