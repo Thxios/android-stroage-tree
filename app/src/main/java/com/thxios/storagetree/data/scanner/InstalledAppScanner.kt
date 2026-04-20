@@ -69,9 +69,14 @@ class InstalledAppScanner @Inject constructor() {
         else null
         val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
 
-        val packages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
+        val packages = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.getInstalledPackages(PackageManager.PackageInfoFlags.of(PackageManager.GET_META_DATA.toLong()))
+        } else {
+            @Suppress("DEPRECATION")
+            pm.getInstalledPackages(PackageManager.GET_META_DATA)
+        }
         val appNodes = packages
-            .filter { it.applicationInfo != null }
+            .filter { it.applicationInfo != null && it.packageName != context.packageName }
             .mapNotNull { pkg ->
                 val appInfo: ApplicationInfo = pkg.applicationInfo ?: return@mapNotNull null
                 val appLabel = pm.getApplicationLabel(appInfo).toString()
