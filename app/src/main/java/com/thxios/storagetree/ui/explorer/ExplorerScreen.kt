@@ -14,10 +14,15 @@ import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -25,6 +30,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,6 +41,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.thxios.storagetree.data.scanner.FileSizeFormatter
+import com.thxios.storagetree.data.storage.StorageRoot
 import com.thxios.storagetree.domain.model.FileCategory
 import com.thxios.storagetree.domain.model.FileNode
 import com.thxios.storagetree.domain.model.ViewMode
@@ -52,11 +61,13 @@ fun ExplorerScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
-        viewModel.startScan(Environment.getExternalStorageDirectory().absolutePath)
+        viewModel.loadStorageRoots()
+        val defaultPath = Environment.getExternalStorageDirectory().absolutePath
+        viewModel.startScan(defaultPath)
     }
 
-    val isAtRoot = uiState.currentPath.isEmpty() ||
-        uiState.currentPath == Environment.getExternalStorageDirectory().absolutePath
+    val rootPath = uiState.selectedRoot?.path ?: Environment.getExternalStorageDirectory().absolutePath
+    val isAtRoot = uiState.currentPath.isEmpty() || uiState.currentPath == rootPath
 
     BackHandler {
         if (!isAtRoot) {
@@ -95,7 +106,8 @@ fun ExplorerScreen(
             }
         },
         onNavigateUp = { viewModel.navigateUp() },
-        onToggleViewMode = { viewModel.toggleViewMode() }
+        onToggleViewMode = { viewModel.toggleViewMode() },
+        onRootSelected = { viewModel.selectRoot(it) }
     )
 }
 
@@ -115,7 +127,8 @@ private fun ExplorerContent(
     onNodeLongClick: (FileNode) -> Unit,
     onAppBack: () -> Unit,
     onNavigateUp: () -> Unit,
-    onToggleViewMode: () -> Unit
+    onToggleViewMode: () -> Unit,
+    onRootSelected: (StorageRoot) -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -164,6 +177,14 @@ private fun ExplorerContent(
             if (uiState.isScanning) {
                 ScanProgressBanner(currentPath = uiState.scanningCurrentPath)
             }
+            if (uiState.availableRoots.size > 1) {
+                StorageRootPicker(
+                    roots = uiState.availableRoots,
+                    selected = uiState.selectedRoot,
+                    onRootSelected = onRootSelected,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
             if (uiState.error != null) {
                 ErrorBanner(message = uiState.error)
             }
@@ -189,6 +210,54 @@ private fun ExplorerContent(
                 )
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun StorageRootPicker(
+    roots: List<StorageRoot>,
+    selected: StorageRoot?,
+    onRootSelected: (StorageRoot) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = selected?.label ?: "",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("저장소") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            roots.forEach { root ->
+                DropdownMenuItem(
+                    text = { Text(root.label) },
+                    onClick = { onRootSelected(root); expanded = false }
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun StorageRootPickerPreview() {
+    StorageTreeTheme {
+        StorageRootPicker(
+            roots = listOf(
+                StorageRoot("/storage/emulated/0", "내부 저장소", true),
+                StorageRoot("/storage/sdcard1", "SD 카드", false)
+            ),
+            selected = StorageRoot("/storage/emulated/0", "내부 저장소", true),
+            onRootSelected = {}
+        )
     }
 }
 

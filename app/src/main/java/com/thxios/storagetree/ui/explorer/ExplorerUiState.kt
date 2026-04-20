@@ -1,5 +1,6 @@
 package com.thxios.storagetree.ui.explorer
 
+import com.thxios.storagetree.data.storage.StorageRoot
 import com.thxios.storagetree.domain.model.FileCategory
 import com.thxios.storagetree.domain.model.FileNode
 import com.thxios.storagetree.domain.model.ScanState
@@ -14,5 +15,7 @@ data class ExplorerUiState(
     val error: String? = null,
     val pendingDeleteNode: FileNode? = null,
     val categorySummary: Map<FileCategory, Long> = emptyMap(),
-    val viewMode: ViewMode = ViewMode.LIST
+    val viewMode: ViewMode = ViewMode.LIST,
+    val availableRoots: List<StorageRoot> = emptyList(),
+    val selectedRoot: StorageRoot? = null,
 )
