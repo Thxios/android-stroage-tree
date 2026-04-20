@@ -2,6 +2,7 @@ package com.thxios.storagetree.ui.explorer
 
 import android.os.Environment
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -33,8 +35,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -107,13 +109,16 @@ fun ExplorerScreen(
         },
         onNavigateUp = { viewModel.navigateUp() },
         onToggleViewMode = { viewModel.toggleViewMode() },
-        onRootSelected = { viewModel.selectRoot(it) }
+        onRootSelected = { viewModel.selectRoot(it) },
+        onBreadcrumbClick = { viewModel.navigateToAncestor(it) },
+        onCategoryFilter = { viewModel.setFilter(it) }
     )
 }
 
 internal fun formatDisplayPath(path: String, maxLen: Int = 40): String {
-    if (path.length <= maxLen) return path
-    val truncated = path.takeLast(maxLen - 3)
+    val stripped = path.removePrefix("/storage/emulated")
+    if (stripped.length <= maxLen) return stripped
+    val truncated = stripped.takeLast(maxLen - 3)
     val slashIdx = truncated.indexOf('/')
     return "..." + if (slashIdx >= 0) truncated.substring(slashIdx) else truncated
 }
@@ -128,18 +133,23 @@ private fun ExplorerContent(
     onAppBack: () -> Unit,
     onNavigateUp: () -> Unit,
     onToggleViewMode: () -> Unit,
-    onRootSelected: (StorageRoot) -> Unit = {}
+    onRootSelected: (StorageRoot) -> Unit = {},
+    onBreadcrumbClick: (String) -> Unit = {},
+    onCategoryFilter: (FileCategory?) -> Unit = {}
 ) {
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        text = if (uiState.currentPath.isEmpty()) "Storage"
-                               else formatDisplayPath(uiState.currentPath),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    if (uiState.currentPath.isEmpty()) {
+                        Text(text = "Storage", maxLines = 1)
+                    } else {
+                        BreadcrumbRow(
+                            path = uiState.currentPath,
+                            selectedRootPath = uiState.selectedRoot?.path ?: "",
+                            onSegmentClick = onBreadcrumbClick
+                        )
+                    }
                 },
                 navigationIcon = {
                     IconButton(onClick = onAppBack) {
@@ -191,6 +201,8 @@ private fun ExplorerContent(
             if (uiState.categorySummary.isNotEmpty()) {
                 CategoryChipRow(
                     summary = uiState.categorySummary,
+                    selected = uiState.selectedCategory,
+                    onCategoryClick = onCategoryFilter,
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp, vertical = 4.dp)
@@ -210,6 +222,56 @@ private fun ExplorerContent(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun BreadcrumbRow(
+    path: String,
+    selectedRootPath: String,
+    onSegmentClick: (fullPath: String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Strip /storage/emulated prefix for display only
+    val displayPath = path.removePrefix("/storage/emulated")
+    val segments = displayPath.split("/").filter { it.isNotEmpty() }
+
+    // Rebuild actual paths for click targets using original path
+    val rootPrefix = if (path.startsWith("/storage/emulated")) "/storage/emulated" else ""
+
+    LazyRow(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
+        items(segments.indices.toList()) { i ->
+            val segmentPath = rootPrefix + "/" + segments.subList(0, i + 1).joinToString("/")
+            val isLast = i == segments.lastIndex
+            Text(
+                text = segments[i],
+                style = MaterialTheme.typography.titleSmall,
+                color = if (isLast) MaterialTheme.colorScheme.onSurface
+                        else MaterialTheme.colorScheme.primary,
+                modifier = if (!isLast) Modifier.clickable { onSegmentClick(segmentPath) }
+                           else Modifier,
+                maxLines = 1
+            )
+            if (!isLast) {
+                Text(
+                    text = " / ",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun BreadcrumbRowPreview() {
+    StorageTreeTheme {
+        BreadcrumbRow(
+            path = "/storage/emulated/0/DCIM/Camera",
+            selectedRootPath = "/storage/emulated/0",
+            onSegmentClick = {}
+        )
     }
 }
 
@@ -264,13 +326,15 @@ private fun StorageRootPickerPreview() {
 @Composable
 private fun CategoryChipRow(
     summary: Map<FileCategory, Long>,
+    selected: FileCategory?,
+    onCategoryClick: (FileCategory?) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyRow(modifier = modifier) {
         items(summary.entries.sortedByDescending { it.value }.toList()) { (category, size) ->
             FilterChip(
-                selected = false,
-                onClick = {},
+                selected = selected == category,
+                onClick = { onCategoryClick(if (selected == category) null else category) },
                 label = { Text("${category.name} ${formatter.format(size)}") },
                 modifier = Modifier.padding(end = 4.dp)
             )
