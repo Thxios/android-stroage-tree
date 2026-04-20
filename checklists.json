@@ -130,6 +130,7 @@
         "InstalledAppScanner: 자식 노드 APK/데이터/캐시로 단순화 (OBB 노드 제거)",
         "InstalledAppScanner: VIRTUAL_OBB_SUFFIX 상수 제거"
       ]
-    }
+    },
+    { "id": "phase-6a", "name": "Sort Order Icon Menu", "status": "completed", "completedAt": "2026-04-21" }
   ]
 }
