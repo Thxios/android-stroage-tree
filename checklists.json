@@ -132,6 +132,7 @@
       ]
     },
     { "id": "phase-6a", "name": "Sort Order Icon Menu", "status": "completed", "completedAt": "2026-04-21" },
-    { "id": "phase-6b", "name": "Initial Folder Picker on Startup", "status": "completed", "completedAt": "2026-04-21" }
+    { "id": "phase-6b", "name": "Initial Folder Picker on Startup", "status": "completed", "completedAt": "2026-04-21" },
+    { "id": "phase-7a", "name": "Fix appsNode disappearing on goBack", "status": "completed", "completedAt": "2026-04-21" }
   ]
 }
