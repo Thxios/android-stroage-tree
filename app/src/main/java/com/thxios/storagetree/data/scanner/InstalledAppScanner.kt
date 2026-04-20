@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Environment
 import android.os.Process
 import android.os.storage.StorageManager
 import com.thxios.storagetree.domain.model.FileNode
@@ -22,7 +21,6 @@ class InstalledAppScanner @Inject constructor() {
         const val VIRTUAL_APK_SUFFIX = "/apk"
         const val VIRTUAL_DATA_SUFFIX = "/data"
         const val VIRTUAL_CACHE_SUFFIX = "/cache"
-        const val VIRTUAL_OBB_SUFFIX = "/obb"
     }
 
     fun hasUsageStatsPermission(context: Context): Boolean {
@@ -44,12 +42,32 @@ class InstalledAppScanner @Inject constructor() {
         return mode == AppOpsManager.MODE_ALLOWED
     }
 
+    private fun getAllVolumeStats(
+        storageStatsManager: StorageStatsManager,
+        storageManager: StorageManager,
+        packageName: String
+    ): Pair<Long, Long> {
+        var totalData = 0L
+        var totalCache = 0L
+        storageManager.storageVolumes.forEach { volume ->
+            val dir = volume.directory ?: return@forEach
+            try {
+                val uuid = storageManager.getUuidForPath(dir)
+                val stats = storageStatsManager.queryStatsForPackage(uuid, packageName, Process.myUserHandle())
+                totalData += stats.dataBytes
+                totalCache += stats.cacheBytes
+            } catch (_: Exception) { }
+        }
+        return Pair(totalData, totalCache)
+    }
+
     fun buildVirtualAppsNode(context: Context): FileNode {
         val pm = context.packageManager
         val hasUsageStats = hasUsageStatsPermission(context)
         val storageStatsManager = if (hasUsageStats)
             context.getSystemService(Context.STORAGE_STATS_SERVICE) as? StorageStatsManager
         else null
+        val storageManager = context.getSystemService(Context.STORAGE_SERVICE) as StorageManager
 
         val packages = pm.getInstalledPackages(PackageManager.GET_META_DATA)
         val appNodes = packages
@@ -59,64 +77,31 @@ class InstalledAppScanner @Inject constructor() {
                 val appLabel = pm.getApplicationLabel(appInfo).toString()
                 val appPath = "$VIRTUAL_APPS_PATH/${pkg.packageName}"
 
-                // APK: base + splits
                 val apkSize = try {
                     val base = File(appInfo.sourceDir).length()
                     val splits = appInfo.splitSourceDirs?.sumOf { File(it).length() } ?: 0L
                     base + splits
                 } catch (e: Exception) { 0L }
 
-                // Internal data + cache via StorageStatsManager (UUID_DEFAULT = internal storage)
-                var internalDataSize = 0L
-                var cacheSize = 0L
+                var totalDataSize = 0L
+                var totalCacheSize = 0L
                 if (storageStatsManager != null) {
-                    try {
-                        val stats = storageStatsManager.queryStatsForPackage(
-                            StorageManager.UUID_DEFAULT, pkg.packageName, Process.myUserHandle()
-                        )
-                        internalDataSize = stats.dataBytes
-                        cacheSize = stats.cacheBytes
-                    } catch (e: Exception) { /* skip */ }
+                    val (dataBytes, cacheBytes) = getAllVolumeStats(storageStatsManager, storageManager, pkg.packageName)
+                    totalDataSize = dataBytes
+                    totalCacheSize = cacheBytes
                 }
 
-                // OBB directory (external, accessible with MANAGE_EXTERNAL_STORAGE)
-                val obbSize = try {
-                    val obbDir = File(
-                        Environment.getExternalStorageDirectory(),
-                        "Android/obb/${pkg.packageName}"
-                    )
-                    if (obbDir.exists() && obbDir.isDirectory)
-                        obbDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
-                    else 0L
-                } catch (e: Exception) { 0L }
-
-                // External data directory (best-effort; Android 11+ may deny for other apps)
-                val externalDataSize = try {
-                    val extDataDir = File(
-                        Environment.getExternalStorageDirectory(),
-                        "Android/data/${pkg.packageName}"
-                    )
-                    if (extDataDir.exists() && extDataDir.isDirectory)
-                        extDataDir.walkTopDown().filter { it.isFile }.sumOf { it.length() }
-                    else 0L
-                } catch (e: SecurityException) { 0L }
-                  catch (e: Exception) { 0L }
-
-                val totalSize = apkSize + internalDataSize + cacheSize + obbSize + externalDataSize
+                val totalSize = apkSize + totalDataSize + totalCacheSize
 
                 val children = buildList {
                     add(FileNode(name = "APK", path = "$appPath$VIRTUAL_APK_SUFFIX",
                         sizeBytes = apkSize, isDirectory = false))
-                    val totalData = internalDataSize + externalDataSize
-                    if (totalData > 0)
+                    if (totalDataSize > 0)
                         add(FileNode(name = "데이터", path = "$appPath$VIRTUAL_DATA_SUFFIX",
-                            sizeBytes = totalData, isDirectory = false))
-                    if (cacheSize > 0)
+                            sizeBytes = totalDataSize, isDirectory = false))
+                    if (totalCacheSize > 0)
                         add(FileNode(name = "캐시", path = "$appPath$VIRTUAL_CACHE_SUFFIX",
-                            sizeBytes = cacheSize, isDirectory = false))
-                    if (obbSize > 0)
-                        add(FileNode(name = "OBB", path = "$appPath$VIRTUAL_OBB_SUFFIX",
-                            sizeBytes = obbSize, isDirectory = false))
+                            sizeBytes = totalCacheSize, isDirectory = false))
                 }
 
                 FileNode(
