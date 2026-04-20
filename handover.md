@@ -3,99 +3,57 @@
 
 ---
 
-## 1. 현재 상태 요약
+## 1. 현재 상태
 
-**plan.md의 모든 Phase(0 ~ 2C) 구현 완료.**
-남은 작업은 **Instrumented 테스트 실행 실패 문제 해결** 뿐이다.
+**plan.md의 모든 Phase(0 ~ 2C, 3A ~ 3E) 구현 완료.**
 
-- 단위 테스트 (`./gradlew test`): ✅ 전체 통과
+- 단위 테스트 (`./gradlew test`): ✅ 전체 통과 (32개)
 - APK 빌드 (`./gradlew assembleDebug`): ✅ 성공
-- Instrumented 테스트 (`./gradlew connectedAndroidTest`): ❌ 실패 (아래 원인 참고)
+- Instrumented 테스트 (`./gradlew connectedAndroidTest`): ❌ 미해결 (아래 알려진 이슈 참고)
+
+### 완료된 Phase 목록
+
+| Phase | 이름 | 완료일 |
+|-------|------|--------|
+| 0 | Project Scaffolding | 2026-04-19 |
+| 1a | Domain Models & Scanner | 2026-04-19 |
+| 1b | Repository & Hilt Wiring | 2026-04-20 |
+| 1c | Permission Screen | 2026-04-19 |
+| 1d | List View | 2026-04-20 |
+| 1e | Treemap View | 2026-04-20 |
+| 1f | Navigation & Integration | 2026-04-20 |
+| 2a | File Deletion | 2026-04-20 |
+| 2b | File Categorization | 2026-04-20 |
+| 2c | View Toggle | 2026-04-20 |
+| 3a | UX Improvements | 2026-04-20 |
+| 3b | Scan Root Selection & Partial Scan Display | 2026-04-20 |
+| 3c | Deep Scan UX & File Filter | 2026-04-20 |
+| 3d | Installed Apps Virtual Folder | 2026-04-20 |
+| 3e | Installed Apps Size Accuracy Fix | 2026-04-20 |
 
 ---
 
-## 2. Instrumented 테스트 실패 원인 및 현황
+## 2. 구현된 주요 기능 (Phase별)
 
-### 원인
-사용자의 에뮬레이터가 **Pixel_9_Pro AVD (API 37, Android 17)**이다.  
-Espresso(`espresso-core:3.6.1`)는 Android 15(API 35)에서 제거된 `InputManager.getInstance()`를 reflection으로 호출하는데, API 37에서도 동일하게 실패한다.
-
-에러 메시지:
-```
-java.lang.NoSuchMethodException: android.hardware.input.InputManager.getInstance []
-at androidx.test.espresso.base.InputManagerEventInjectionStrategy.initialize
-```
-
-### 이미 시도한 것
-- `espressoCore = "3.6.1"` (3.5.1 → 3.6.1) 업그레이드 → 미해결
-- `junitVersion = "1.2.1"`, `androidTestRunner = "1.6.2"` 추가 → 미해결
-- `testInstrumentationRunnerArguments["shellInputCommandInjection"] = "true"` 설정 → 미해결
-- `testOptions { animationsDisabled = true }` 설정 → 미해결
-- `./gradlew clean` 시도 → build 디렉토리 잠김으로 실패 (Android Studio 프로세스가 파일 점유)
-
-### 현재 테스트 파일 목록 (androidTest)
-```
-app/src/androidTest/
-├── HiltTestRunner.kt               — HiltTestApplication 주입용 커스텀 러너
-├── di/
-│   ├── FakeStorageRepository.kt   — 테스트용 Fake (scan → Done, delete → success)
-│   └── TestStorageModule.kt       — @TestInstallIn으로 StorageModule 대체
-└── ui/
-    ├── NavigationTest.kt           — @HiltAndroidTest, MainActivity 실행, PermissionScreen 확인
-    ├── PermissionScreenTest.kt     — 권한 화면 UI 테스트
-    ├── StorageListViewTest.kt      — 리스트 렌더링 및 클릭 테스트
-    ├── TreemapViewTest.kt          — Treemap 렌더링 및 클릭 테스트
-    └── ViewToggleTest.kt           — 뷰 모드 토글 테스트
-```
+- **Phase 0**: Gradle KTS + Hilt + Compose + KSP 프로젝트 초기 구성
+- **Phase 1a**: `FileNode`, `ScanState`, `FileCategory`, `ViewMode` 도메인 모델 + `FileScanner` (java.io.File 재귀)
+- **Phase 1b**: `StorageRepository` 인터페이스 + `StorageRepositoryImpl` + Hilt `StorageModule`
+- **Phase 1c**: `MANAGE_EXTERNAL_STORAGE` 권한 요청 화면 (`PermissionScreen`, `PermissionViewModel`)
+- **Phase 1d**: `StorageListView` + `FileNodeRow` (LazyColumn 기반 파일 목록)
+- **Phase 1e**: `TreemapView` + `SquarifyAlgorithm` (외부 라이브러리 없이 Squarified 알고리즘 구현)
+- **Phase 1f**: `AppNavGraph` + `ExplorerViewModel` (ArrayDeque 백스택 기반 드릴다운 내비게이션)
+- **Phase 2a**: `DeleteNodeUseCase` + `ExplorerViewModel.deleteNode()` + AlertDialog 확인
+- **Phase 2b**: `CategorizeFilesUseCase` + `CategoryChipRow` 필터 UI (파일 타입별 분류)
+- **Phase 2c**: `ViewMode` 토글 (LIST ↔ TREEMAP) + `ExplorerViewModel.toggleViewMode()`
+- **Phase 3a**: 스캔 중 실시간 결과 표시, TopAppBar 경로 표시, 시스템 Back vs 상위 폴더 분리
+- **Phase 3b**: `StorageVolumeHelper` (내부/외부 저장소 루트 목록), 스캔 루트 선택 UI
+- **Phase 3c**: 경로 breadcrumb 클릭 내비게이션, LazyColumn 스크롤바, 파일 타입 필터 동적 갱신
+- **Phase 3d**: `InstalledAppScanner` (PackageManager + StorageStatsManager), 가상 FileNode 트리 `/virtual://installed-apps/`, `PACKAGE_USAGE_STATS` 권한 흐름
+- **Phase 3e**: OBB 디렉토리 직접 측정, 외부 data 디렉토리 직접 측정, `splitSourceDirs` APK 합산, OBB 별도 자식 노드 표시
 
 ---
 
-## 3. 다음 agent가 해야 할 일
-
-### Task 1: Instrumented 테스트 통과시키기
-
-**우선 시도: API 34 AVD 사용**
-- 사용자에게 API 34 AVD를 생성하도록 요청하거나, 이미 생성되어 있는지 확인:
-  ```
-  emulator -list-avds
-  adb devices
-  adb shell getprop ro.build.version.sdk
-  ```
-- API 34 AVD가 있다면 `./gradlew connectedAndroidTest`로 바로 실행
-
-**대안: 코드 레벨 우회 (API 37 에뮬레이터 유지 시)**
-
-Espresso의 `InputManagerEventInjectionStrategy`를 우회하는 방법:
-
-옵션 A — `UiAutomation` 기반으로 전환 (HiltTestRunner 수정):
-```kotlin
-override fun onCreate(arguments: Bundle) {
-    // Espresso가 InputManager 대신 UiAutomation을 사용하도록 강제
-    arguments.putString("clearPackageData", "false")
-    super.onCreate(arguments)
-}
-```
-
-옵션 B — Espresso 최신 스냅샷 버전 사용:
-```toml
-espressoCore = "3.7.0-alpha01"  # 또는 최신 alpha/beta
-```
-Maven Central에서 `androidx.test.espresso:espresso-core`의 최신 버전 확인 후 적용.
-
-옵션 C — `createComposeRule()` 대신 Espresso 의존 없는 방식:
-일부 테스트를 Compose의 `runComposeUiTest { }` (Espresso 없이 동작) 블록으로 재작성.
-단, `createAndroidComposeRule<Activity>`는 Espresso 필수 → NavigationTest는 예외.
-
-### Task 2: 이슈 없을 시 최종 정리
-- 모든 instrumented 테스트 통과 확인
-- `git status` 확인하여 미커밋 파일 없는지 점검
-- 필요 시 deprecated icon 경고 수정:
-  - `FileNodeRow.kt`: `Icons.Filled.InsertDriveFile` → `Icons.AutoMirrored.Filled.InsertDriveFile`
-  - `ExplorerScreen.kt`: `Icons.Filled.ViewList` → `Icons.AutoMirrored.Filled.ViewList`
-
----
-
-## 4. 전체 구현된 파일 구조
+## 3. 전체 파일 구조
 
 ```
 app/src/main/java/com/thxios/storagetree/
@@ -113,12 +71,15 @@ app/src/main/java/com/thxios/storagetree/
 │   ├── DeleteNodeUseCase.kt
 │   └── CategorizeFilesUseCase.kt
 ├── data/scanner/
-│   ├── FileScanner.kt                  — Flow<ScanState>, java.io.File 재귀
-│   └── FileSizeFormatter.kt            — bytes → "4.2 GB"
+│   ├── FileScanner.kt                  — Flow<ScanState>, java.io.File 재귀, throttle 기반 partial emit
+│   ├── FileSizeFormatter.kt            — bytes → "4.2 GB"
+│   └── InstalledAppScanner.kt          — APK(base+splits) + internal data/cache + OBB + external data 측정
 ├── data/repository/
 │   └── StorageRepositoryImpl.kt        — FileScanner 위임, deleteRecursively()
+├── data/storage/
+│   └── StorageVolumeHelper.kt          — 사용 가능한 저장소 루트 목록 (내부/외부)
 ├── di/
-│   └── StorageModule.kt                — @Binds StorageRepository
+│   └── StorageModule.kt                — @Binds StorageRepository, InstalledAppScanner @Singleton
 └── ui/
     ├── navigation/
     │   ├── AppDestination.kt           — sealed class (Permission, Explorer)
@@ -128,12 +89,12 @@ app/src/main/java/com/thxios/storagetree/
     │   └── PermissionScreen.kt
     ├── explorer/
     │   ├── ExplorerUiState.kt          — data class (currentPath, displayedChildren, scanState, ...)
-    │   ├── ExplorerViewModel.kt        — startScan, navigateTo, navigateUp, toggleViewMode,
-    │   │                                  setPendingDelete, deleteNode, categorizeUseCase 호출
-    │   ├── ExplorerScreen.kt           — AlertDialog(삭제), CategoryChipRow, LIST/TREEMAP 조건부 렌더링
+    │   ├── ExplorerViewModel.kt        — startScan, navigateTo/Up/ToAncestor, toggleViewMode,
+    │   │                                  setPendingDelete, deleteNode, setFilter, loadInstalledApps
+    │   ├── ExplorerScreen.kt           — AlertDialog(삭제), CategoryChipRow, breadcrumb, LIST/TREEMAP 분기
     │   ├── listview/
     │   │   ├── FileNodeRow.kt          — combinedClickable (onClick + onLongClick)
-    │   │   └── StorageListView.kt      — LazyColumn
+    │   │   └── StorageListView.kt      — LazyColumn + 스크롤바
     │   └── treemap/
     │       ├── TreemapRect.kt          — data class (node, left, top, right, bottom)
     │       ├── SquarifyAlgorithm.kt    — pure Kotlin Squarified 알고리즘
@@ -141,40 +102,109 @@ app/src/main/java/com/thxios/storagetree/
     └── components/
         ├── ScanProgressBanner.kt
         ├── SizeProgressBar.kt
+        ├── ScrollbarModifier.kt        — LazyColumn 스크롤바 커스텀 Modifier
         └── ErrorBanner.kt
+
+app/src/test/java/com/thxios/storagetree/   — 단위 테스트 (32개, 전체 통과)
+app/src/androidTest/java/com/thxios/storagetree/
+├── HiltTestRunner.kt
+├── di/
+│   ├── FakeStorageRepository.kt
+│   └── TestStorageModule.kt
+└── ui/
+    ├── NavigationTest.kt
+    ├── PermissionScreenTest.kt
+    ├── StorageListViewTest.kt
+    ├── TreemapViewTest.kt
+    └── ViewToggleTest.kt
 ```
 
 ---
 
-## 5. 주요 의존성 버전 (libs.versions.toml 현재 상태)
+## 4. 알려진 이슈 / 제한사항
+
+### Instrumented 테스트 실패 (미해결)
+사용자의 에뮬레이터가 **Pixel_9_Pro AVD (API 37, Android 17)**이다.  
+Espresso(`espresso-core:3.6.1`)는 Android 15(API 35)에서 제거된 `InputManager.getInstance()`를 reflection으로 호출하는데, API 37에서도 동일하게 실패한다.
+
+```
+java.lang.NoSuchMethodException: android.hardware.input.InputManager.getInstance []
+at androidx.test.espresso.base.InputManagerEventInjectionStrategy.initialize
+```
+
+**권장 해결 방법**: API 34 AVD 생성 후 `./gradlew connectedAndroidTest` 실행.
+
+### Android 11+ 외부 data 디렉토리 접근 제한
+`/storage/emulated/0/Android/data/<packageName>/`은 Android 11 (API 30) 이후 다른 앱에서 접근 불가 (보안 정책). `SecurityException`을 catch하여 0으로 처리함. 따라서 외부 data 크기는 일부 앱에서 정확하지 않을 수 있음.
+
+### PACKAGE_USAGE_STATS 권한 없을 때 data/cache 미표시
+`StorageStatsManager.queryStatsForPackage()`는 `PACKAGE_USAGE_STATS` 권한이 필요함. 이 권한이 없으면 내부 data/cache 크기가 0으로 표시됨. OBB와 APK 크기는 권한과 무관하게 측정됨.
+
+### OBB 측정은 MANAGE_EXTERNAL_STORAGE 필요
+앱이 이미 `MANAGE_EXTERNAL_STORAGE`를 요청하므로 일반적으로 문제없음. 권한이 없을 경우 `Exception` catch로 0 처리.
+
+### 알려진 경고 (에러 아님)
+- `Icons.Filled.InsertDriveFile` deprecated → `Icons.AutoMirrored.Filled.InsertDriveFile` 권장
+- `Icons.Filled.ViewList` deprecated → `Icons.AutoMirrored.Filled.ViewList` 권장
+- `unsafeCheckOpNoThrow` deprecated (Android Q+) — API 레벨 분기로 처리됨
+
+---
+
+## 5. 주요 의존성 버전 (libs.versions.toml 기준)
 
 ```toml
 agp = "9.1.1"
 kotlin = "2.2.10"
 ksp = "2.2.10-2.0.2"
 hilt = "2.59.2"
+hiltNavigationCompose = "1.2.0"
+navigationCompose = "2.8.9"
 composeBom = "2026.02.01"
+lifecycleViewModel = "2.9.0"
+coroutines = "1.10.2"
 espressoCore = "3.6.1"
 junitVersion = "1.2.1"
 androidTestRunner = "1.6.2"
 mockk = "1.14.0"
 turbine = "1.2.0"
-coroutines = "1.10.2"
 ```
 
----
-
-## 6. 알려진 경고 (에러 아님)
-
-- `Icons.Filled.InsertDriveFile` deprecated → `Icons.AutoMirrored.Filled.InsertDriveFile` 권장
-- `Icons.Filled.ViewList` deprecated → `Icons.AutoMirrored.Filled.ViewList` 권장
-- `./gradlew clean` 실패: Android Studio가 build 디렉토리를 점유 중일 때 발생. Android Studio를 닫고 실행하면 해결됨.
+SDK: compileSdk 36, minSdk 26, targetSdk 36
 
 ---
 
-## 7. 참고: Hilt 테스트 구조
+## 6. 다음 agent 작업 시 주의사항
 
-- `HiltTestRunner` (`androidTest/`): `AndroidJUnitRunner`를 상속, `HiltTestApplication` 주입
-- `TestStorageModule` (`androidTest/di/`): `@TestInstallIn(replaces = [StorageModule::class])` — 모든 androidTest에서 자동으로 `FakeStorageRepository` 사용
-- `FakeStorageRepository`: `scan()` → 즉시 `Done(빈 root)` emit, `deleteNode()` → `Result.success`
-- `@HiltAndroidTest` 테스트는 `HiltAndroidRule`을 `@get:Rule(order = 0)`으로 선언해야 함
+### Virtual Path 처리
+- `InstalledAppScanner.VIRTUAL_APPS_PATH = "virtual://installed-apps"` — 실제 파일시스템 경로가 아님
+- `ExplorerViewModel`의 많은 분기문이 `path.startsWith(VIRTUAL_APPS_PATH)`로 가상 경로를 특별 처리함
+  - `navigateTo`: 가상 경로 진입 시 `categorySummary = emptyMap()`
+  - `setPendingDelete`: 가상 경로 노드는 삭제 불가
+  - `navigateUp` / `navigateToAncestor`: 가상 경로에서 되돌아올 때 categorySummary 비움
+- 가상 노드의 children path 형식: `virtual://installed-apps/<packageName>/apk` 등
+
+### BackStack 구조
+- `backStack: ArrayDeque<Pair<String, List<FileNode>>>` — `(이전 경로, 이전 displayedChildren)` 쌍을 저장
+- `NavController`를 사용하지 않음. ViewModel 내부에서 직접 관리
+- `navigateToAncestor(targetPath)`: breadcrumb 클릭 시 backStack에서 targetPath 항목까지 pop
+
+### scanRoot vs displayedChildren
+- `scanRoot: FileNode?` — 스캔 완료 후 전체 트리의 루트 노드 (불변)
+- `displayedChildren` — 현재 화면에 표시되는 자식 노드 목록 (가변, 필터/정렬 반영)
+- root level에서는 `appsNode`(가상 설치앱 노드)를 `scanRoot.children`에 병합하여 표시
+- `setFilter()` 함수는 backStack이 비어있으면 root level로 간주하고 appsNode를 포함시킴
+
+### InstalledAppScanner 크기 측정 로직 (Phase 3e 이후)
+```
+totalSize = apkSize(base+splits) + internalDataSize + cacheSize + obbSize + externalDataSize
+```
+- `internalDataSize` = `stats.dataBytes` (StorageStatsManager, UUID_DEFAULT)
+- `obbSize` = `/storage/emulated/0/Android/obb/<pkg>/` 직접 walkTopDown
+- `externalDataSize` = `/storage/emulated/0/Android/data/<pkg>/` 직접 walkTopDown (SecurityException → 0)
+- child 노드: APK (항상), 데이터 (>0일 때), 캐시 (>0일 때), OBB (>0일 때)
+
+### Hilt 테스트 구조
+- `HiltTestRunner`: `AndroidJUnitRunner` 상속, `HiltTestApplication` 주입
+- `TestStorageModule` (`@TestInstallIn(replaces = [StorageModule::class])`): androidTest 전체에서 자동으로 `FakeStorageRepository` 사용
+- `buildVirtualAppsNode`는 테스트에서 mock되므로 InstalledAppScanner 변경이 테스트에 영향 없음
+- `@HiltAndroidTest` 테스트는 `HiltAndroidRule`을 `@get:Rule(order = 0)`으로 선언 필수
