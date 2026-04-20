@@ -99,4 +99,41 @@ class FileScannerTest {
 
         assertTrue(sawDone)
     }
+
+    @Test
+    fun `scan emits partial rootNode after each top-level child`() = runTest {
+        val root = tempFolder.newFolder("partial")
+        // Create 2 subdirectories each with files
+        val sub1 = root.resolve("sub1").also { it.mkdir() }
+        sub1.resolve("a.txt").writeBytes(ByteArray(100))
+        sub1.resolve("b.txt").writeBytes(ByteArray(200))
+        val sub2 = root.resolve("sub2").also { it.mkdir() }
+        sub2.resolve("c.txt").writeBytes(ByteArray(50))
+
+        val scanningWithRoot = mutableListOf<ScanState.Scanning>()
+
+        scanner.scan(root.absolutePath).test {
+            var keepGoing = true
+            while (keepGoing) {
+                when (val item = awaitItem()) {
+                    is ScanState.Scanning -> {
+                        if (item.rootNode != null) scanningWithRoot.add(item)
+                    }
+                    is ScanState.Done -> {
+                        cancelAndConsumeRemainingEvents()
+                        keepGoing = false
+                    }
+                    else -> {}
+                }
+            }
+        }
+
+        // After first child completes we should see a partial rootNode with 1 child
+        assertTrue("Should have at least one partial Scanning with rootNode", scanningWithRoot.isNotEmpty())
+        val firstPartial = scanningWithRoot.first()
+        assertEquals(1, firstPartial.rootNode!!.children.size)
+        // After second child we should see rootNode with 2 children
+        val lastPartial = scanningWithRoot.last()
+        assertEquals(2, lastPartial.rootNode!!.children.size)
+    }
 }

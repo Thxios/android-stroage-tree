@@ -12,11 +12,49 @@ import javax.inject.Inject
 class FileScanner @Inject constructor() {
     fun scan(path: String): Flow<ScanState> = flow {
         val rootFile = File(path)
-        emit(ScanState.Scanning(currentPath = path))
-        val rootNode = scanDirectory(rootFile) { currentPath ->
-            emit(ScanState.Scanning(currentPath = currentPath))
+        emit(ScanState.Scanning(currentPath = path, rootNode = null))
+
+        if (!rootFile.isDirectory) {
+            val node = FileNode(
+                name = rootFile.name,
+                path = rootFile.absolutePath,
+                sizeBytes = rootFile.length(),
+                isDirectory = false
+            )
+            emit(ScanState.Done(node))
+            return@flow
         }
-        emit(ScanState.Done(rootNode))
+
+        val childFiles = rootFile.listFiles() ?: emptyArray()
+        val scannedChildren = mutableListOf<FileNode>()
+
+        for (childFile in childFiles) {
+            val childNode = scanDirectory(childFile) { currentPath ->
+                emit(ScanState.Scanning(currentPath = currentPath, rootNode = null))
+            }
+            scannedChildren.add(childNode)
+            // After each top-level child completes, emit partial result
+            val partialChildren = scannedChildren.sortedByDescending { it.sizeBytes }
+            emit(ScanState.Scanning(
+                currentPath = childFile.absolutePath,
+                rootNode = FileNode(
+                    name = rootFile.name,
+                    path = rootFile.absolutePath,
+                    sizeBytes = scannedChildren.sumOf { it.sizeBytes },
+                    isDirectory = true,
+                    children = partialChildren
+                )
+            ))
+        }
+
+        val finalChildren = scannedChildren.sortedByDescending { it.sizeBytes }
+        emit(ScanState.Done(FileNode(
+            name = rootFile.name,
+            path = rootFile.absolutePath,
+            sizeBytes = scannedChildren.sumOf { it.sizeBytes },
+            isDirectory = true,
+            children = finalChildren
+        )))
     }.flowOn(Dispatchers.IO)
 
     private suspend fun scanDirectory(
