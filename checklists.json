@@ -66,7 +66,7 @@
         "ExplorerScreen: ^ 버튼 → goToParent(), 뒤로가기 버튼 → goBack() 분리"
       ]
     },
-    { "id": "phase-4b", "name": "Settings Page + Installed Apps Toggle + Sort Order", "status": "pending",
+    { "id": "phase-4b", "name": "Settings Page + Installed Apps Toggle + Sort Order", "status": "completed", "completedAt": "2026-04-20",
       "tasks": [
         "SortOrder enum 추가 (SIZE_DESC, NAME_ASC, DATE_DESC, NATURAL_NAME_ASC)",
         "AppSettings data class + PreferencesRepository (DataStore)",
