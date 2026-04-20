@@ -10,77 +10,112 @@ import java.io.File
 import javax.inject.Inject
 
 class FileScanner @Inject constructor() {
+
     fun scan(path: String): Flow<ScanState> = flow {
         val rootFile = File(path)
         emit(ScanState.Scanning(currentPath = path, rootNode = null))
 
         if (!rootFile.isDirectory) {
             val node = FileNode(
-                name = rootFile.name,
-                path = rootFile.absolutePath,
-                sizeBytes = rootFile.length(),
-                isDirectory = false
+                name = rootFile.name, path = rootFile.absolutePath,
+                sizeBytes = rootFile.length(), isDirectory = false
             )
             emit(ScanState.Done(node))
             return@flow
         }
 
         val childFiles = rootFile.listFiles() ?: emptyArray()
-        val scannedChildren = mutableListOf<FileNode>()
+        val scannedTopLevel = mutableListOf<FileNode>()
+        var lastEmitMs = System.currentTimeMillis()
+        val THROTTLE_MS = 200L
 
         for (childFile in childFiles) {
-            val childNode = scanDirectory(childFile) { currentPath ->
-                emit(ScanState.Scanning(currentPath = currentPath, rootNode = null))
+            val childNode = scanDirectory(childFile) { partialChild ->
+                // Called whenever any subdirectory completes inside this top-level child
+                val now = System.currentTimeMillis()
+                if (now - lastEmitMs >= THROTTLE_MS) {
+                    lastEmitMs = now
+                    val partialList = (scannedTopLevel + listOf(partialChild))
+                        .sortedByDescending { it.sizeBytes }
+                    emit(ScanState.Scanning(
+                        currentPath = partialChild.path,
+                        rootNode = FileNode(
+                            name = rootFile.name,
+                            path = rootFile.absolutePath,
+                            sizeBytes = partialList.sumOf { it.sizeBytes },
+                            isDirectory = true,
+                            children = partialList
+                        )
+                    ))
+                }
             }
-            scannedChildren.add(childNode)
-            // After each top-level child completes, emit partial result
-            val partialChildren = scannedChildren.sortedByDescending { it.sizeBytes }
+            scannedTopLevel.add(childNode)
+            // Always emit after each top-level child finishes
+            val partialList = scannedTopLevel.sortedByDescending { it.sizeBytes }
             emit(ScanState.Scanning(
-                currentPath = childFile.absolutePath,
+                currentPath = rootFile.absolutePath,
                 rootNode = FileNode(
                     name = rootFile.name,
                     path = rootFile.absolutePath,
-                    sizeBytes = scannedChildren.sumOf { it.sizeBytes },
+                    sizeBytes = scannedTopLevel.sumOf { it.sizeBytes },
                     isDirectory = true,
-                    children = partialChildren
+                    children = partialList
                 )
             ))
+            lastEmitMs = System.currentTimeMillis()
         }
 
-        val finalChildren = scannedChildren.sortedByDescending { it.sizeBytes }
+        val finalList = scannedTopLevel.sortedByDescending { it.sizeBytes }
         emit(ScanState.Done(FileNode(
             name = rootFile.name,
             path = rootFile.absolutePath,
-            sizeBytes = scannedChildren.sumOf { it.sizeBytes },
+            sizeBytes = scannedTopLevel.sumOf { it.sizeBytes },
             isDirectory = true,
-            children = finalChildren
+            children = finalList
         )))
     }.flowOn(Dispatchers.IO)
 
+    // onPartialUpdate is called with the CURRENT node (partial) whenever any child directory inside it completes
     private suspend fun scanDirectory(
         file: File,
-        onProgress: suspend (String) -> Unit
+        onPartialUpdate: suspend (FileNode) -> Unit
     ): FileNode {
         if (!file.isDirectory) {
             return FileNode(
-                name = file.name,
-                path = file.absolutePath,
-                sizeBytes = file.length(),
-                isDirectory = false
+                name = file.name, path = file.absolutePath,
+                sizeBytes = file.length(), isDirectory = false
             )
         }
-        onProgress(file.absolutePath)
         val childFiles = file.listFiles() ?: emptyArray()
-        val children = childFiles
-            .map { scanDirectory(it, onProgress) }
-            .sortedByDescending { it.sizeBytes }
-        val totalSize = children.sumOf { it.sizeBytes }
+        val children = mutableListOf<FileNode>()
+        for (childFile in childFiles) {
+            val childNode = scanDirectory(childFile) { partialDescendant ->
+                // Propagate up: rebuild current node with partial children + pass up
+                val currentPartial = FileNode(
+                    name = file.name, path = file.absolutePath,
+                    sizeBytes = children.sumOf { it.sizeBytes } + partialDescendant.sizeBytes,
+                    isDirectory = true,
+                    children = (children + listOf(partialDescendant)).sortedByDescending { it.sizeBytes }
+                )
+                onPartialUpdate(currentPartial)
+            }
+            children.add(childNode)
+            if (childFile.isDirectory) {
+                // Notify after each child directory completes
+                val currentPartial = FileNode(
+                    name = file.name, path = file.absolutePath,
+                    sizeBytes = children.sumOf { it.sizeBytes },
+                    isDirectory = true,
+                    children = children.sortedByDescending { it.sizeBytes }
+                )
+                onPartialUpdate(currentPartial)
+            }
+        }
+        val sorted = children.sortedByDescending { it.sizeBytes }
         return FileNode(
-            name = file.name,
-            path = file.absolutePath,
-            sizeBytes = totalSize,
-            isDirectory = true,
-            children = children
+            name = file.name, path = file.absolutePath,
+            sizeBytes = children.sumOf { it.sizeBytes },
+            isDirectory = true, children = sorted
         )
     }
 }
