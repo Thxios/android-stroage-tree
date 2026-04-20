@@ -42,6 +42,8 @@ class ExplorerViewModel @Inject constructor(
     private var appsNode: FileNode? = null
     private var hasUsageStatsPermission = false
     private var currentSettings: AppSettings = AppSettings()
+    private var scanStarted = false
+    private var lastKnownHasUsageStatsPermission: Boolean? = null
 
     private val _uiState = MutableStateFlow(ExplorerUiState())
     val uiState: StateFlow<ExplorerUiState> = _uiState.asStateFlow()
@@ -79,7 +81,29 @@ class ExplorerViewModel @Inject constructor(
         _uiState.update { it.copy(displayedChildren = filtered) }
     }
 
+    fun startScanIfNeeded(rootPath: String) {
+        if (!scanStarted) startScan(rootPath)
+    }
+
+    fun reloadScan() {
+        scanStarted = false
+        val rootPath = _uiState.value.selectedRoot?.path
+            ?: _uiState.value.currentPath.takeIf { it.isNotEmpty() }
+            ?: return
+        startScan(rootPath)
+    }
+
+    fun reloadInstalledAppsIfPermissionChanged() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val current = installedAppScanner.hasUsageStatsPermission(context)
+            if (current != lastKnownHasUsageStatsPermission) {
+                loadInstalledApps()
+            }
+        }
+    }
+
     fun startScan(rootPath: String) {
+        scanStarted = true
         viewModelScope.launch {
             scanUseCase(rootPath).collect { state ->
                 when (state) {
@@ -148,6 +172,7 @@ class ExplorerViewModel @Inject constructor(
     fun loadInstalledApps() {
         viewModelScope.launch(Dispatchers.IO) {
             hasUsageStatsPermission = installedAppScanner.hasUsageStatsPermission(context)
+            lastKnownHasUsageStatsPermission = hasUsageStatsPermission
             val node = installedAppScanner.buildVirtualAppsNode(context)
             appsNode = node
             // Merge into current displayed children at root level, respecting the setting

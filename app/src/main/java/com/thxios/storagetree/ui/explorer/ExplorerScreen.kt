@@ -16,6 +16,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.automirrored.filled.ViewList
 import androidx.compose.material3.AlertDialog
@@ -78,14 +79,14 @@ fun ExplorerScreen(
     LaunchedEffect(Unit) {
         viewModel.loadStorageRoots()
         val defaultPath = Environment.getExternalStorageDirectory().absolutePath
-        viewModel.startScan(defaultPath)
+        viewModel.startScanIfNeeded(defaultPath)
     }
 
     // Re-check usage stats permission when returning from Settings
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
-                viewModel.loadInstalledApps()
+                viewModel.reloadInstalledAppsIfPermissionChanged()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -132,7 +133,8 @@ fun ExplorerScreen(
         },
         onOpenSettings = {
             navController?.navigate(AppDestination.Settings.route)
-        }
+        },
+        onReload = { viewModel.reloadScan() }
     )
 }
 
@@ -158,7 +160,8 @@ private fun ExplorerContent(
     onBreadcrumbClick: (String) -> Unit = {},
     onCategoryFilter: (FileCategory?) -> Unit = {},
     onOpenUsageSettings: () -> Unit = {},
-    onOpenSettings: () -> Unit = {}
+    onOpenSettings: () -> Unit = {},
+    onReload: () -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -190,6 +193,12 @@ private fun ExplorerContent(
                                 contentDescription = "Go to parent folder"
                             )
                         }
+                    }
+                    IconButton(onClick = onReload, enabled = !uiState.isScanning) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Reload scan"
+                        )
                     }
                     IconButton(onClick = onOpenSettings) {
                         Icon(
