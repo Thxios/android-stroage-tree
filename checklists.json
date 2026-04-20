@@ -121,7 +121,7 @@
         "SettingsScreen: sortOrder RadioButton 그룹 제거"
       ]
     },
-    { "id": "phase-5f", "name": "Multi-Volume StorageStatsManager", "status": "pending",
+    { "id": "phase-5f", "name": "Multi-Volume StorageStatsManager", "status": "completed", "completedAt": "2026-04-21",
       "tasks": [
         "InstalledAppScanner: getAllVolumeStats(storageStatsManager, storageManager, packageName) 추가",
         "InstalledAppScanner: UUID_DEFAULT 단일 쿼리 블록 → getAllVolumeStats() 호출로 교체",
