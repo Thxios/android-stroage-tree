@@ -97,7 +97,7 @@
         "ExplorerScreen: TopAppBar에 Icons.Filled.Refresh 버튼 추가 (스캔 중 비활성화)"
       ]
     },
-    { "id": "phase-5c", "name": "Start Folder Picker", "status": "pending",
+    { "id": "phase-5c", "name": "Start Folder Picker", "status": "completed", "completedAt": "2026-04-21",
       "tasks": [
         "ExplorerUiState: showFolderPicker, pickerCurrentPath, pickerEntries 필드 추가",
         "ExplorerViewModel: openFolderPicker(), closeFolderPicker(), navigatePickerInto(), startScanFromPicker(), loadPickerEntries() 추가",
