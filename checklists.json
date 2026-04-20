@@ -86,7 +86,7 @@
         "AppNavGraph: startDestination=Splash, Splash→Permission/Explorer 분기 (popUpTo Splash inclusive)"
       ]
     },
-    { "id": "phase-5b", "name": "Scan Once + Reload Button", "status": "pending",
+    { "id": "phase-5b", "name": "Scan Once + Reload Button", "status": "completed", "completedAt": "2026-04-21",
       "tasks": [
         "ExplorerViewModel: scanStarted 플래그 추가",
         "ExplorerViewModel: startScanIfNeeded() — 미시작 시에만 startScan()",
