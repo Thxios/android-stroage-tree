@@ -4,6 +4,7 @@ import com.thxios.storagetree.data.storage.StorageRoot
 import com.thxios.storagetree.domain.model.FileCategory
 import com.thxios.storagetree.domain.model.FileNode
 import com.thxios.storagetree.domain.model.ScanState
+import com.thxios.storagetree.domain.model.SortOrder
 import com.thxios.storagetree.domain.model.ViewMode
 
 data class ExplorerUiState(
@@ -25,4 +26,5 @@ data class ExplorerUiState(
     val showFolderPicker: Boolean = false,
     val pickerCurrentPath: String = "",
     val pickerEntries: List<String> = emptyList(),
+    val sortOrder: SortOrder = SortOrder.SIZE_DESC,
 )

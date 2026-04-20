@@ -58,6 +58,7 @@ import com.thxios.storagetree.data.scanner.FileSizeFormatter
 import com.thxios.storagetree.data.storage.StorageRoot
 import com.thxios.storagetree.domain.model.FileCategory
 import com.thxios.storagetree.domain.model.FileNode
+import com.thxios.storagetree.domain.model.SortOrder
 import com.thxios.storagetree.domain.model.ViewMode
 import com.thxios.storagetree.ui.components.ErrorBanner
 import com.thxios.storagetree.ui.navigation.AppDestination
@@ -139,7 +140,8 @@ fun ExplorerScreen(
         onOpenFolderPicker = { viewModel.openFolderPicker() },
         onCloseFolderPicker = { viewModel.closeFolderPicker() },
         onNavigatePickerInto = { viewModel.navigatePickerInto(it) },
-        onStartScanFromPicker = { viewModel.startScanFromPicker(it) }
+        onStartScanFromPicker = { viewModel.startScanFromPicker(it) },
+        onSortOrderChanged = { viewModel.setSortOrder(it) }
     )
 }
 
@@ -170,7 +172,8 @@ private fun ExplorerContent(
     onOpenFolderPicker: () -> Unit = {},
     onCloseFolderPicker: () -> Unit = {},
     onNavigatePickerInto: (String) -> Unit = {},
-    onStartScanFromPicker: (String) -> Unit = {}
+    onStartScanFromPicker: (String) -> Unit = {},
+    onSortOrderChanged: (SortOrder) -> Unit = {}
 ) {
     Scaffold(
         topBar = {
@@ -242,6 +245,13 @@ private fun ExplorerContent(
             if (uiState.isScanning) {
                 ScanProgressBanner(currentPath = uiState.scanningCurrentPath)
             }
+            SortOrderDropdown(
+                sortOrder = uiState.sortOrder,
+                onSortOrderChanged = onSortOrderChanged,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
             if (uiState.usageStatsPermissionChecked && !uiState.hasUsageStatsPermission) {
                 UsageStatsPermissionBanner(
                     onOpenSettings = onOpenUsageSettings,
@@ -423,6 +433,55 @@ private fun StorageRootPickerPreview() {
             ),
             selected = StorageRoot("/storage/emulated/0", "내부 저장소", true),
             onRootSelected = {}
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SortOrderDropdown(
+    sortOrder: SortOrder,
+    onSortOrderChanged: (SortOrder) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val labels = mapOf(
+        SortOrder.SIZE_DESC to "크기 (큰 순)",
+        SortOrder.NAME_ASC to "이름 (가나다순)",
+        SortOrder.DATE_DESC to "날짜 (최신순)",
+        SortOrder.NATURAL_NAME_ASC to "이름 (자연 순서)"
+    )
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = labels[sortOrder] ?: "",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("정렬") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            SortOrder.entries.forEach { order ->
+                DropdownMenuItem(
+                    text = { Text(labels[order] ?: order.name) },
+                    onClick = { onSortOrderChanged(order); expanded = false }
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun SortOrderDropdownPreview() {
+    StorageTreeTheme {
+        SortOrderDropdown(
+            sortOrder = SortOrder.SIZE_DESC,
+            onSortOrderChanged = {}
         )
     }
 }

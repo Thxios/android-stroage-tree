@@ -78,7 +78,7 @@ class ExplorerViewModel @Inject constructor(
         val filtered = if (_uiState.value.selectedCategory != null) {
             withApps.filter { containsCategory(it, _uiState.value.selectedCategory!!) }
         } else withApps
-        _uiState.update { it.copy(displayedChildren = filtered) }
+        _uiState.update { it.copy(displayedChildren = filtered, sortOrder = currentSettings.sortOrder) }
     }
 
     fun startScanIfNeeded(rootPath: String) {
@@ -349,6 +349,12 @@ class ExplorerViewModel @Inject constructor(
             current.copy(
                 viewMode = if (current.viewMode == ViewMode.LIST) ViewMode.TREEMAP else ViewMode.LIST
             )
+        }
+    }
+
+    fun setSortOrder(order: SortOrder) {
+        viewModelScope.launch {
+            preferencesRepository.setSortOrder(order)
         }
     }
 
