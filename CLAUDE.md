@@ -1,7 +1,5 @@
 # CLAUDE.md — StorageTree Project Guidelines
 
-이 파일은 모든 sub-agent가 작업 시작 전 반드시 읽어야 하는 공통 지침입니다.
-
 ## Project Overview
 TreeSizeFree의 핵심 기능을 Android로 이식하는 스토리지 분석 앱.
 - **Language**: Kotlin
@@ -11,6 +9,14 @@ TreeSizeFree의 핵심 기능을 Android로 이식하는 스토리지 분석 앱
 - **Async**: Kotlin Coroutines & Flow
 - **Build**: Gradle Kotlin DSL + KSP (`ksp = "2.2.10-1.0.29"`)
 - **SDK**: compileSdk 36, minSdk 26, Kotlin 2.2.10, AGP 9.1.1, Compose BOM 2026.02.01
+
+## Main-agent 작업 원칙
+- `handover.md` - 이전 주요 진행상황과 변경사항
+- 의미 있는 단위(Phase)로 작업 계획 수립, `plan.md`, `checklists.json` 작성
+- 구현과 테스트는 Sub-agent에게 할당
+- 완료된 Phase는 `plan.md`에서 `completed_phases.md`로 이동 (간결하게 유지)
+- 각 Phase가 완료 될 때 마다 계속 진행할 지 사용자에게 확인받을 것
+- 작업 종료 시 진행상황과 주요 변경사항을 반영하여, 필요한 경우 `handover.md` 업데이트 (간결하게 유지)
 
 ## Sub-agent 작업 원칙
 
@@ -58,8 +64,6 @@ com.thxios.storagetree/
     │   └── treemap/   TreemapView, SquarifyAlgorithm
     └── components/    ScanProgressBanner, SizeProgressBar, ErrorBanner, ScrollbarModifier
 ```
-
-완료된 Phase 이력: `completed_phases.md`
 
 ## Key Design Decisions
 - **파일 시스템**: `java.io.File` 사용 (NIO 아님) — `listFiles()` null 반환으로 권한 오류 처리
